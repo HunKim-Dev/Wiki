@@ -1,16 +1,8 @@
-<h1 align="center">wiki</h1>
+<h1 align="center">Wiki</h1>
 
 <p align="center">
   <b>LLM Wiki for Claude Code</b> — Andrej Karpathy의 <i>LLM Wiki</i> 컨셉을<br>
   Claude Code 환경에 결정론적으로 구현한 에이전트
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Claude%20Code-hook%20%2B%20skill-bc4c00?style=flat-square" alt="Claude Code hook + skill">
-  <img src="https://img.shields.io/badge/Node-%E2%89%A5%2018-0969da?style=flat-square" alt="Node >= 18">
-  <img src="https://img.shields.io/badge/Python-3-3776ab?style=flat-square" alt="Python 3">
-  <img src="https://img.shields.io/badge/extra%20token%20cost-0-1a7f37?style=flat-square" alt="extra token cost 0">
-  <img src="https://img.shields.io/badge/vector%20DB-none-8250df?style=flat-square" alt="no vector DB">
 </p>
 
 <p align="center">
@@ -31,6 +23,7 @@
 ## 목차
 
 - [무엇인가](#무엇인가)
+- [🛠️ Tech Stacks](#️-tech-stacks)
 - [핵심 컨셉](#핵심-컨셉)
 - [아키텍처 한눈에](#아키텍처-한눈에)
 - [설치](#설치)
@@ -63,6 +56,28 @@ LLM과 일하면서 마주치는 두 가지 만성 문제를 해결합니다:
 - 위키에 없는 새 인사이트는 사용자 승인 후 영구 저장하게 합니다
 
 결과: **시간이 갈수록 위키가 풍성해지고, 같은 질문 반복이 줄고, 답변 신뢰도가 올라감.**
+
+---
+
+## 🛠️ Tech Stacks
+
+#### Platform
+![Claude Code](https://img.shields.io/badge/Claude%20Code%20hook%20%2B%20skill-D97757?style=flat-square&logo=claude&logoColor=fff)
+
+#### Runtime
+![Node.js](https://img.shields.io/badge/Node.js%20%E2%89%A5%2018-5FA04E?style=flat-square&logo=nodedotjs&logoColor=fff)
+&nbsp;
+![Python](https://img.shields.io/badge/Python%203-3776AB?style=flat-square&logo=python&logoColor=fff)
+
+#### Storage
+![Markdown](https://img.shields.io/badge/Markdown-000000?style=flat-square&logo=markdown&logoColor=fff)
+&nbsp;
+![No vector DB](https://img.shields.io/badge/No%20vector%20DB-8250DF?style=flat-square)
+
+#### Cost
+![Extra token cost 0](https://img.shields.io/badge/Extra%20token%20cost%200-1A7F37?style=flat-square)
+
+<br/>
 
 ---
 
