@@ -1,6 +1,6 @@
 ---
 name: wiki-config
-description: wiki-agent 설정을 인터랙티브 메뉴로 관리. 사용자에게 단계별로 질문해서 ~/.claude/settings.json을 안전하게 수정. install.js처럼 묻고 고르게 하는 UX. 위키 폴더·그룹·프로젝트 연결·검색 범위·자동 참조 on/off 등.
+description: wiki 설정을 인터랙티브 메뉴로 관리. 사용자에게 단계별로 질문해서 ~/.claude/settings.json을 안전하게 수정. install.js처럼 묻고 고르게 하는 UX. 위키 폴더·그룹·프로젝트 연결·검색 범위·자동 참조 on/off 등.
 ---
 
 # /wiki-config — 인터랙티브 설정 관리
@@ -38,7 +38,7 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 ### Stage 1 — 현재 상태 표시 (사용자 친화)
 
 ```
-📋 wiki-agent 현재 설정
+📋 wiki 현재 설정
 
 📂 위키 저장 폴더
   ~/WorkSpace/wiki-docs ✅
@@ -339,7 +339,7 @@ URL 패턴 (substring 매칭):
 현재: ✅ 활성
 
 매 사용자 질문마다 hook이 자동으로 위키를 검색해 컨텍스트로 주입합니다.
-이게 wiki-agent의 핵심 기능입니다.
+이게 wiki의 핵심 기능입니다.
 
 변경 옵션:
   1. 비활성화 — 자동 검색 끔. wiki는 /wiki, /wiki-config 같은 명시 호출 시에만

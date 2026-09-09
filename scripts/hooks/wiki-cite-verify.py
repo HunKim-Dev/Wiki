@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wiki-agent Stop hook — 답변 인용 V1+V2 검증.
+wiki-for-claude Stop hook — 답변 인용 V1+V2 검증.
 
 목적: Claude가 답변에서 wiki 인용 정책을 지켰는지 확인.
 

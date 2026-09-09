@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wiki-agent Inverted Index Builder
+wiki-for-claude Inverted Index Builder
 
 입력: wiki 루트 경로 ($WIKI_PATH/<project>/wiki)
 출력: <wiki_root>/.wiki-index.json (token → pages 역인덱스)

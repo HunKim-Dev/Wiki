@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// wiki-agent preuninstall: 심볼릭 링크 + auto-consult 블록 제거.
+// wiki-for-claude preuninstall: 심볼릭 링크 + auto-consult 블록 제거.
 // settings.json의 env.WIKI_PATH는 **보존** (재설치 시 재사용).
 
 const fs = require('fs');
@@ -26,27 +26,27 @@ const OLD_HOOK_DEST = path.join(HOME, '.claude', 'hooks', 'wiki4-auto-consult.sh
 const LEGACY_HOOK_DEST = path.join(HOME, '.claude', 'hooks', 'wiki4-auto-consult.py');
 const LEGACY_CITE_HOOK_DEST = path.join(HOME, '.claude', 'hooks', 'wiki4-cite-verify.py');
 // 버전·구이름(wiki4-agent) 무관하게 매칭. 하드코딩하면 최신 블록을 못 지운다.
-const MARKER_RE_BEGIN = /<!--\s*wiki4?-agent auto-consult v\d+\.\d+ begin\s*-->/;
-const MARKER_RE_END = /<!--\s*wiki4?-agent auto-consult v\d+\.\d+ end\s*-->/;
+const MARKER_RE_BEGIN = /<!--\s*(?:wiki4?-agent|wiki-for-claude) auto-consult v\d+\.\d+ begin\s*-->/;
+const MARKER_RE_END = /<!--\s*(?:wiki4?-agent|wiki-for-claude) auto-consult v\d+\.\d+ end\s*-->/;
 
 function unlinkIfOurs(src, dest, label) {
   try {
     const lstat = fs.lstatSync(dest, { throwIfNoEntry: false });
     if (!lstat) return { status: 'not-found' };
     if (!lstat.isSymbolicLink()) {
-      console.warn(`[wiki-agent] skip ${label}: 심볼릭 링크 아님 (사용자 파일 보호) → ${dest}`);
+      console.warn(`[wiki] skip ${label}: 심볼릭 링크 아님 (사용자 파일 보호) → ${dest}`);
       return { status: 'not-symlink' };
     }
     const target = fs.readlinkSync(dest);
     if (target !== src) {
-      console.warn(`[wiki-agent] skip ${label}: 우리 소스 아님 (${target}) → 건드리지 않음`);
+      console.warn(`[wiki] skip ${label}: 우리 소스 아님 (${target}) → 건드리지 않음`);
       return { status: 'foreign-symlink' };
     }
     fs.unlinkSync(dest);
-    console.log(`[wiki-agent] unlink ${label}`);
+    console.log(`[wiki] unlink ${label}`);
     return { status: 'unlinked' };
   } catch (err) {
-    console.error(`[wiki-agent] error ${label}: ${err.message}`);
+    console.error(`[wiki] error ${label}: ${err.message}`);
     return { status: 'error' };
   }
 }
@@ -68,13 +68,13 @@ function removeAutoConsult() {
 
     if (remaining.length === 0) {
       fs.unlinkSync(CLAUDE_MD);
-      console.log('[wiki-agent] auto-consult 제거 + 빈 ~/.claude/CLAUDE.md 삭제');
+      console.log('[wiki] auto-consult 제거 + 빈 ~/.claude/CLAUDE.md 삭제');
     } else {
       fs.writeFileSync(CLAUDE_MD, remaining + '\n', 'utf8');
-      console.log('[wiki-agent] auto-consult 제거 (사용자 기타 내용 보존)');
+      console.log('[wiki] auto-consult 제거 (사용자 기타 내용 보존)');
     }
   } catch (err) {
-    console.error(`[wiki-agent] auto-consult removal error: ${err.message}`);
+    console.error(`[wiki] auto-consult removal error: ${err.message}`);
   }
 }
 
@@ -99,7 +99,7 @@ function removeHook() {
   if (fs.existsSync(OLD_AUDIT_HOOK_DEST)) {
     try {
       fs.unlinkSync(OLD_AUDIT_HOOK_DEST);
-      console.log(`[wiki-agent] cleanup: hooks/wiki4-audit-trigger.py (구버전)`);
+      console.log(`[wiki] cleanup: hooks/wiki4-audit-trigger.py (구버전)`);
     } catch (err) {}
   }
 
@@ -137,10 +137,10 @@ function removeHook() {
 
     if (totalRemoved > 0) {
       fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2) + '\n');
-      console.log(`[wiki-agent] settings.json hook 엔트리 ${totalRemoved}개 제거`);
+      console.log(`[wiki] settings.json hook 엔트리 ${totalRemoved}개 제거`);
     }
   } catch (err) {
-    console.error(`[wiki-agent] hook 제거 error: ${err.message}`);
+    console.error(`[wiki] hook 제거 error: ${err.message}`);
   }
 }
 
@@ -157,14 +157,14 @@ function main() {
   }
 
   console.log(
-    `[wiki-agent] uninstall: unlinked=${summary.unlinked}, not-found=${summary.notFound}, ` +
+    `[wiki] uninstall: unlinked=${summary.unlinked}, not-found=${summary.notFound}, ` +
     `user-file=${summary.notSymlink}, foreign=${summary.foreign}, error=${summary.error}`
   );
 
   removeHook();
   removeAutoConsult();
 
-  console.log('[wiki-agent] 완료. settings.json의 env.WIKI_PATH는 보존됩니다.');
+  console.log('[wiki] 완료. settings.json의 env.WIKI_PATH는 보존됩니다.');
 }
 
 main();

@@ -56,7 +56,7 @@ LLM과 일하면서 마주치는 두 가지 만성 문제를 해결합니다:
 1. **환각(hallucination)** — Claude가 모르는 걸 모른다고 안 하고 그럴듯하게 만들어냄
 2. **휘발성** — 어렵게 합성한 답이 대화창 닫으면 사라짐. 다음에 같은 질문 또 함
 
-wiki-agent는:
+이 도구는:
 
 - 프로젝트별 마크다운 위키를 만들어 두고
 - Claude가 답할 때 자동으로 그 위키를 참조하게 하고
@@ -82,7 +82,7 @@ Andrej Karpathy가 X에 제안한 "LLM Wiki" 컨셉의 핵심:
 | Discoverability    | index, 도메인 분류, 빠른 탐색                          |
 | Anti-hallucination | "wiki에 없으면 없다고 명시" 의무                       |
 
-### wiki-agent의 확장
+### 이 구현이 더한 것
 
 Karpathy 원안 + 다음을 추가:
 
@@ -136,13 +136,13 @@ Karpathy 원안 + 다음을 추가:
 ### 설치 명령
 
 ```bash
-# npm 레지스트리에서
-npm install -g wiki-agent
-
-# 또는 소스에서
 git clone https://github.com/hunkim-tae/wiki.git
-cd wiki && npm install -g .
+cd wiki
+npm install -g .
 ```
+
+> npm 레지스트리에는 배포하지 않았습니다. 위 clone 방식이 유일한 설치 경로입니다.
+> (`npm install -g wiki-agent`는 **다른 사람의 무관한 패키지**이니 실행하지 마세요.)
 
 `postinstall`이 자동으로 실행됩니다:
 
@@ -219,7 +219,7 @@ Enter만 치면 설치를 실행한 폴더의 git remote에서 org를 추측해 
 ### Step 4 — 설치 완료 안내
 
 ```
-[wiki-agent] 설치 완료.
+[wiki] 설치 완료.
 
   WIKI_PATH         = ~/wiki-docs
   WIKI_ORGS         = Acme,Contoso
@@ -239,9 +239,9 @@ Enter만 치면 설치를 실행한 폴더의 git remote에서 org를 추측해 
 TTY가 없으면 **질문 없이** 기본값으로 끝냅니다. 설치가 멈추는 일은 없습니다.
 
 ```
-[wiki-agent] 비대화형 — WIKI_PATH 기본값 사용: ~/wiki-docs
-[wiki-agent] 비대화형 — WIKI_ORGS 기본값 사용: Personal
-[wiki-agent] 비대화형 — project→그룹 매핑 건너뜀 (/wiki-config로 추가)
+[wiki] 비대화형 — WIKI_PATH 기본값 사용: ~/wiki-docs
+[wiki] 비대화형 — WIKI_ORGS 기본값 사용: Personal
+[wiki] 비대화형 — project→그룹 매핑 건너뜀 (/wiki-config로 추가)
 ```
 
 나중에 `/wiki-config`로 바꾸거나, TTY에서 `npm run install:manual`을 다시 실행하면 됩니다.
@@ -382,12 +382,12 @@ Claude 답변
 
 V1 위반:
 ```
-⚠️ wiki-agent: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
+⚠️ wiki: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
 ```
 
 V2 위반:
 ```
-⚠️ wiki-agent: wiki 컨텍스트 받았는데 [[wiki-link]] 인용 0건 — 정책 위반
+⚠️ wiki: wiki 컨텍스트 받았는데 [[wiki-link]] 인용 0건 — 정책 위반
 ```
 
 ### 위반 발견 시 사용자 행동
@@ -653,7 +653,7 @@ $ claude
 [Claude 답변 — Claude가 환각으로 없는 페이지 인용]
 [[concepts/auth/jwt-rs256]]에 정리... ...
 
-⚠️ wiki-agent: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
+⚠️ wiki: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
 
 > 그 페이지 없네. 진짜 있는 인증 페이지 찾아서 다시 답해줘
 
@@ -865,7 +865,7 @@ cp ~/.claude/settings.json.bak-<latest> ~/.claude/settings.json
 
 ```bash
 # CLAUDE.md에 auto-consult 블록 있는지
-grep -n "wiki-agent auto-consult" ~/.claude/CLAUDE.md
+grep -n "wiki-for-claude auto-consult" ~/.claude/CLAUDE.md
 
 # 없으면 재설치
 npm run install:manual
@@ -911,7 +911,7 @@ export WIKI_CITE_VERIFY=0
 
 ```bash
 # npm uninstall — preuninstall hook이 자동 정리
-npm uninstall -g wiki-agent
+npm uninstall -g wiki-for-claude
 
 # 자동 정리 항목:
 # - ~/.claude/skills/wiki* 심링크 제거

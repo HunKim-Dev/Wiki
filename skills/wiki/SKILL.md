@@ -58,7 +58,7 @@ description: 소스 문서(README, ADR, PR 설명, 회의록 등)를 읽고 LLM 
 ### 실행 전 확인 (실패 시 중단)
 
 ```bash
-: "${WIKI_PATH:?WIKI_PATH 미설정 — 'npm install -g wiki-agent' 실행 후 재시도}"
+: "${WIKI_PATH:?WIKI_PATH 미설정 — 'npm install -g wiki-for-claude' 실행 후 재시도}"
 [ -d "$WIKI_PATH" ] || { echo "WIKI_PATH 존재 안 함: $WIKI_PATH"; exit 1; }
 SRC=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PROJECT=$(basename "$SRC")

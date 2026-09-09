@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wiki-agent UserPromptSubmit hook — Hybrid mode (v3.0).
+wiki-for-claude UserPromptSubmit hook — Hybrid mode (v3.0).
 
 철학: v1.3의 결정론적 baseline + v2.0의 LLM 의미 매칭 보강 + cross-project 결정론적 가시화.
 
@@ -872,7 +872,7 @@ def main():
     else:
         parts.append("### Matched pages\n\n(none — index만 참조)\n\n")
 
-    parts.append(f"(hook: wiki-agent v3.0 hybrid — matched={len(top)}/{len(ranked_uniform)})\n")
+    parts.append(f"(hook: wiki v3.0 hybrid — matched={len(top)}/{len(ranked_uniform)})\n")
 
     additional = "".join(parts)
     emit_output(additional)
