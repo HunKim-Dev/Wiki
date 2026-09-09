@@ -28,6 +28,7 @@ v1.3 대비 변경:
 import os
 import sys
 import json
+import time
 import re
 import glob
 import subprocess
@@ -90,6 +91,50 @@ def emit_output(additional_context):
         }
     }
     print(json.dumps(out, ensure_ascii=False))
+
+
+# ───── 설정 깨짐 경고 ─────
+#
+# WIKI_PATH가 없으면 hook은 조용히 종료한다. 그 침묵 때문에 레포나 위키 폴더를
+# 옮긴 뒤 위키가 안 도는 걸 한참 눈치 못 채는 사고가 실제로 있었다.
+# 다만 매 프롬프트마다 띄우면 경고 자체를 무시하게 되므로 하루 1회로 제한한다.
+
+WARN_STAMP = os.path.join(os.path.expanduser("~"), ".claude", "hooks", ".wiki-config-warn")
+WARN_INTERVAL_SEC = 24 * 60 * 60
+
+
+def warn_recently_shown():
+    try:
+        return time.time() - os.path.getmtime(WARN_STAMP) < WARN_INTERVAL_SEC
+    except Exception:
+        return False
+
+
+def touch_warn_stamp():
+    try:
+        os.makedirs(os.path.dirname(WARN_STAMP), exist_ok=True)
+        with open(WARN_STAMP, "w", encoding="utf-8") as f:
+            f.write(datetime.now().isoformat())
+    except Exception:
+        pass
+
+
+def warn_broken_config(wiki_path):
+    """stderr(디버그용)와 additionalContext(사용자가 실제로 보는 경로) 양쪽으로 알린다."""
+    if wiki_path:
+        detail = f"`WIKI_PATH`가 존재하지 않는 경로를 가리킵니다 — `{wiki_path}`"
+    else:
+        detail = "`WIKI_PATH`가 설정돼 있지 않습니다"
+
+    print(f"⚠️ wiki: {detail} — 위키 참조가 꺼진 상태입니다.", file=sys.stderr)
+    emit_output(
+        "## ⚠️ wiki 설정 문제 — 사용자에게 알릴 것\n\n"
+        f"{detail}. 그래서 이번 답변에는 위키 컨텍스트가 주입되지 않았습니다.\n\n"
+        "답변 **맨 앞에 한 줄로** 다음을 알리세요 (이 알림은 하루 1회만 뜹니다):\n"
+        "> ⚠️ 위키 참조가 꺼져 있습니다 — 레포나 위키 폴더를 옮겼다면 새 경로에서 "
+        "`npm install -g .`를 다시 실행하거나, `/wiki-config`로 저장 폴더를 고치세요.\n"
+    )
+    touch_warn_stamp()
 
 
 # ───── settings.json 직접 읽기 (즉시 반영 보장) ─────
@@ -660,6 +705,9 @@ def main():
     wiki_path = env.get("WIKI_PATH", "")
     if not wiki_path or not os.path.isdir(wiki_path):
         tsv_log("skip-no-env", prompt_len=len(prompt))
+        # 엔진 레포 안에서는 원래 안 도는 게 정상이므로 경고하지 않는다.
+        if not is_engine_repo(cwd) and not warn_recently_shown():
+            warn_broken_config(wiki_path)
         sys.exit(0)
 
     src, project = detect_project(cwd)
