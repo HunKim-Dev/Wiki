@@ -23,7 +23,7 @@
 ## 목차
 
 - [무엇인가](#무엇인가)
-- [🛠️ Tech Stacks](#️-tech-stacks)
+- [Tech Stacks](#tech-stacks)
 - [핵심 컨셉](#핵심-컨셉)
 - [아키텍처 한눈에](#아키텍처-한눈에)
 - [설치](#설치)
@@ -59,7 +59,7 @@ LLM과 일하면서 마주치는 두 가지 만성 문제를 해결합니다:
 
 ---
 
-## 🛠️ Tech Stacks
+## Tech Stacks
 
 #### Platform
 ![Claude Code](https://img.shields.io/badge/Claude%20Code%20hook%20%2B%20skill-D97757?style=flat-square&logo=claude&logoColor=fff)
