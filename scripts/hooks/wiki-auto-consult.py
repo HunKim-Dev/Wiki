@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wiki4-agent UserPromptSubmit hook — Hybrid mode (v3.0).
+wiki-agent UserPromptSubmit hook — Hybrid mode (v3.0).
 
 철학: v1.3의 결정론적 baseline + v2.0의 LLM 의미 매칭 보강 + cross-project 결정론적 가시화.
 
@@ -446,14 +446,54 @@ def detect_work_intent(prompt):
     return True
 
 
+# ───── 엔진 레포 가드 (이식 가능) ─────
+#
+# 이 패키지 자신의 소스 트리 안에서는 자기 자신을 wiki로 참조하지 않는다.
+# 1순위: install.js가 settings.json env에 넣어준 WIKI_ENGINE_ROOT
+# 2순위: cwd에서 위로 올라가며 엔진 마커 파일 탐색 (env 없이 직접 실행한 경우)
+
+ENGINE_MARKER = os.path.join("scripts", "hooks", "wiki-auto-consult.py")
+
+
+def is_engine_repo(path_str):
+    if not path_str:
+        return False
+    try:
+        target = os.path.realpath(path_str)
+    except Exception:
+        return False
+
+    root = os.environ.get("WIKI_ENGINE_ROOT", "")
+    if root:
+        try:
+            root = os.path.realpath(root)
+            if target == root or target.startswith(root + os.sep):
+                return True
+        except Exception:
+            pass
+
+    cur = target
+    while True:
+        if os.path.isfile(os.path.join(cur, ENGINE_MARKER)):
+            return True
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return False
+        cur = parent
+
+
 # ───── Inverted index (있으면) + grep fallback ─────
 
-INDEX_FILENAME = ".wiki4-index.json"
+INDEX_FILENAME = ".wiki-index.json"
+# v0.1 이전 이름. 재빌드 전까지 읽기만 허용 (없으면 grep fallback).
+LEGACY_INDEX_FILENAME = ".wiki4-index.json"
 INDEX_VERSION = 1
 
 
 def try_load_index(wiki_root):
     path = os.path.join(wiki_root, INDEX_FILENAME)
+    if not os.path.exists(path):
+        path = os.path.join(wiki_root, LEGACY_INDEX_FILENAME)
     if not os.path.exists(path):
         return None
     try:
@@ -624,7 +664,7 @@ def main():
 
     src, project = detect_project(cwd)
 
-    if src.startswith("/Users/grove/WorkSpace/wiki3") or src.startswith("/Users/grove/WorkSpace/wiki4"):
+    if is_engine_repo(src):
         log(f"skip: engine repo ({src})")
         tsv_log("skip-engine-repo", project=project, prompt_len=len(prompt))
         sys.exit(0)
@@ -832,7 +872,7 @@ def main():
     else:
         parts.append("### Matched pages\n\n(none — index만 참조)\n\n")
 
-    parts.append(f"(hook: wiki4-agent v3.0 hybrid — matched={len(top)}/{len(ranked_uniform)})\n")
+    parts.append(f"(hook: wiki-agent v3.0 hybrid — matched={len(top)}/{len(ranked_uniform)})\n")
 
     additional = "".join(parts)
     emit_output(additional)

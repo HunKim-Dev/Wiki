@@ -15,8 +15,8 @@ description: $WIKI_PATH(위키 저장소)의 변경사항을 git으로 커밋. l
 
 ## 경로 해석
 
-- **작업 루트**: `$WIKI_PATH` (settings.json에서 자동 주입된 경로, 예: `/Users/grove/WorkSpace/wiki4docs`)
-- **엔진 레포 가드**: `$WIKI_PATH`가 `/Users/grove/WorkSpace/wiki3` 또는 `/Users/grove/WorkSpace/wiki4`이면 **즉시 중단**. 엔진 자체를 커밋하지 않는다.
+- **작업 루트**: `$WIKI_PATH` (settings.json에서 자동 주입된 경로, 예: `~/WorkSpace/wiki-docs`)
+- **엔진 레포 가드**: `$WIKI_PATH`가 `$WIKI_ENGINE_ROOT`(이 패키지의 소스 트리) 하위이면 **즉시 중단**. 엔진 자체를 커밋하지 않는다.
 - `$SRC` (소스 레포)는 읽지도 쓰지도 않는다 — 심지어 cwd가 소스 레포여도 git 명령은 `-C $WIKI_PATH`로 강제.
 
 ## 인자
@@ -34,11 +34,14 @@ description: $WIKI_PATH(위키 저장소)의 변경사항을 git으로 커밋. l
 
 ```bash
 cd "$WIKI_PATH"
-# 엔진 레포 가드
-case "$WIKI_PATH" in
-  /Users/grove/WorkSpace/wiki3*|/Users/grove/WorkSpace/wiki4*)
-    echo "HALT: engine repo — refuse"; exit 1 ;;
-esac
+# 엔진 레포 가드 — 이 패키지 자신의 소스 트리는 커밋·수정하지 않는다.
+# WIKI_ENGINE_ROOT는 install.js가 settings.json env에 넣어준다.
+if [ -n "$WIKI_ENGINE_ROOT" ]; then
+  case "$WIKI_PATH" in
+    "$WIKI_ENGINE_ROOT"|"$WIKI_ENGINE_ROOT"/*)
+      echo "HALT: engine repo — refuse"; exit 1 ;;
+  esac
+fi
 # git repo 여부
 [ -d .git ] || { echo "NOT_A_GIT_REPO"; exit 0; }
 # 상태 수집
@@ -119,20 +122,20 @@ wiki: <YYYY-MM-DD> — <N>개 ingest (<project A count>+<project B count>)
 다음 커밋을 수행할까요?
 
 [메시지]
-wiki: 2026-04-23 — 2개 ingest (pubgcom-app-front 2)
+wiki: 2026-04-23 — 2개 ingest (web-front 2)
 
-pubgcom-app-front:
+web-front:
   - [...] ingest: ...
   - [...] ingest: ...
 
 🤖 Generated with /wiki-commit
 
 [변경 파일 — 7개]
- M pubgcom-app-front/wiki/entities/xenopointchallenge-event.md   (+1228 bytes)
- M pubgcom-app-front/wiki/index.md                                (+349 bytes)
- M pubgcom-app-front/wiki/log.md                                  (+282 bytes)
-?? pubgcom-app-front/wiki/concepts/hoverable-device-xbox-gap.md   (신규)
-?? pubgcom-app-front/wiki/concepts/xenopoint-hardcoded-event-period.md (신규)
+ M web-front/wiki/entities/xenopointchallenge-event.md   (+1228 bytes)
+ M web-front/wiki/index.md                                (+349 bytes)
+ M web-front/wiki/log.md                                  (+282 bytes)
+?? web-front/wiki/concepts/hoverable-device-xbox-gap.md   (신규)
+?? web-front/wiki/concepts/xenopoint-hardcoded-event-period.md (신규)
 
 (y: 커밋 진행 / n: 취소 / edit: 메시지 수정)
 ```
@@ -202,7 +205,7 @@ upstream: <origin/main or null>
 - **Force push 금지** — `--force`, `--force-with-lease` 지원 안 함
 - **`--no-verify` 금지** — pre-commit hook 있으면 따름
 - **`--amend` 금지** — 항상 새 commit
-- **Engine repo guard** — `$WIKI_PATH`가 wiki3/wiki4 계열이면 중단
+- **Engine repo guard** — `$WIKI_PATH`가 `$WIKI_ENGINE_ROOT` 하위면 중단
 - **사용자 승인 필수** — `--no-confirm` 플래그 없으면 y 입력 전까지 Stage 5 진입 금지
 - **pre-commit hook 실패 시 우회 금지** — 실패 원인 보고 후 중단, `--no-verify`로 뚫지 않음
 - 민감 파일(`.env`, credentials, 큰 바이너리) 감지 시 경고만 하고 사용자 확인

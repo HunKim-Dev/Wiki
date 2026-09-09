@@ -27,7 +27,7 @@ description: wiki 건강 상태를 비파괴적으로 점검하고 리포트 생
 
 실행 전 확인:
 1. `$WIKI_PATH` 설정 + 실존 디렉토리
-2. cwd가 엔진 레포(wiki3/wiki4)가 아님
+2. cwd가 엔진 레포(`$WIKI_ENGINE_ROOT`)가 아님
 3. `$OUT/wiki/` 없으면 "wiki 없음" 리포트로 조기 종료 (기록이 아직 없으므로 점검할 것도 없음)
 
 조건 실패 시 중단 메시지 출력 후 종료.
@@ -144,7 +144,7 @@ mode: <lightweight|full>
 - 🟡는 검토 권장 (오래된, 고아, 의미 모순).
 - 🟢에 **항상 수치 포함** — 베이스라인 제공.
 - `wiki/lint-reports/` 디렉토리는 필요 시 생성.
-- 엔진 레포(wiki3/wiki4) 수정 금지.
+- 엔진 레포(`$WIKI_ENGINE_ROOT`) 수정 금지.
 
 ## 반환
 

@@ -127,7 +127,7 @@ D['pipeline'] = (t) => {
       { s: '<Group>/<Project>/wiki/', fill: t.muted, size: 11, mono: true },
       { s: 'concepts · entities', fill: t.muted, size: 11 },
       { s: 'decisions · actions', fill: t.muted, size: 11 },
-      { s: '.wiki4-index.json', fill: t.muted, size: 11, mono: true },
+      { s: '.wiki-index.json', fill: t.muted, size: 11, mono: true },
     ],
   });
 
@@ -229,7 +229,7 @@ D['auto-consult'] = (t) => {
   // 입력: wiki 저장소
   g += rect({ x: 500, y: 30, w: 376, h: 84, fill: t.surface, stroke: t.border });
   g += txt({ x: 520, y: 56, s: '$WIKI_PATH  (읽기 전용)', size: 12.5, fill: t.text, weight: 700, anchor: 'start', mono: true });
-  g += txt({ x: 520, y: 76, s: '<Group>/**/wiki/*.md  ·  .wiki4-index.json', size: 11, fill: t.muted, anchor: 'start', mono: true });
+  g += txt({ x: 520, y: 76, s: '<Group>/**/wiki/*.md  ·  .wiki-index.json', size: 11, fill: t.muted, anchor: 'start', mono: true });
   g += txt({ x: 520, y: 96, s: 'hook은 절대 쓰지 않는다 — 저장은 /wiki 명시 호출만', size: 10.5, fill: t.muted, anchor: 'start' });
   g += arrow({ x1: 498, y1: 72, x2: 448, y2: 72, c: t.line, dir: 'left', dash: '4 4' });
   g += txt({ x: 473, y: 62, s: '매칭 검색', size: 10, fill: t.muted });
@@ -352,8 +352,8 @@ D['layout'] = (t) => {
     { k: 'CLAUDE.md', b: true, m: true },
     { k: 'auto-consult 정책 블록 (마커 사이)' },
     { gap: 1 },
-    { k: 'hooks/wiki4-auto-consult.py', b: true, m: true },
-    { k: 'hooks/wiki4-cite-verify.py', b: true, m: true },
+    { k: 'hooks/wiki-auto-consult.py', b: true, m: true },
+    { k: 'hooks/wiki-cite-verify.py', b: true, m: true },
     { k: '→ 레포 파일로 향하는 심링크' },
     { gap: 1 },
     { k: 'skills/wiki*  ×7', b: true, m: true },
@@ -369,7 +369,7 @@ D['layout'] = (t) => {
     { k: 'entities/<domain>/', d: '모듈 · 서비스', m: true },
     { k: 'decisions/', d: 'ADR', m: true },
     { k: 'actions/', d: 'resolve 적용 기록', m: true },
-    { k: '.wiki4-index.json', d: 'inverted index', m: true },
+    { k: '.wiki-index.json', d: 'inverted index', m: true },
   ], t.green);
 
   g += arrow({ x1: 262, y1: 236, x2: 314, y2: 236, c: t.line, dir: 'right' });

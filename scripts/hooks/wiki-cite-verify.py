@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wiki4-agent Stop hook — 답변 인용 V1+V2 검증.
+wiki-agent Stop hook — 답변 인용 V1+V2 검증.
 
 목적: Claude가 답변에서 wiki 인용 정책을 지켰는지 확인.
 
@@ -23,7 +23,7 @@ V2 판정 근거: ~/.claude/hooks/wiki-auto-consult.tsv 마지막 줄에서
 
 가드:
   - WIKI_CITE_VERIFY=0 시 즉시 종료 (kill switch)
-  - 엔진 레포 (wiki3/wiki4) 시 종료
+  - 엔진 레포(이 패키지 자신) 안에서는 종료
   - transcript 없거나 답변 짧으면 종료
 
 실패 시 항상 exit 0.
@@ -162,6 +162,43 @@ def was_wiki_context_injected():
         return False
 
 
+
+# ───── 엔진 레포 가드 (이식 가능) ─────
+#
+# 이 패키지 자신의 소스 트리 안에서는 자기 자신을 wiki로 참조하지 않는다.
+# 1순위: install.js가 settings.json env에 넣어준 WIKI_ENGINE_ROOT
+# 2순위: cwd에서 위로 올라가며 엔진 마커 파일 탐색 (env 없이 직접 실행한 경우)
+
+ENGINE_MARKER = os.path.join("scripts", "hooks", "wiki-auto-consult.py")
+
+
+def is_engine_repo(path_str):
+    if not path_str:
+        return False
+    try:
+        target = os.path.realpath(path_str)
+    except Exception:
+        return False
+
+    root = os.environ.get("WIKI_ENGINE_ROOT", "")
+    if root:
+        try:
+            root = os.path.realpath(root)
+            if target == root or target.startswith(root + os.sep):
+                return True
+        except Exception:
+            pass
+
+    cur = target
+    while True:
+        if os.path.isfile(os.path.join(cur, ENGINE_MARKER)):
+            return True
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return False
+        cur = parent
+
+
 def main():
     env = load_env()
 
@@ -178,7 +215,7 @@ def main():
     transcript = event.get("transcript_path")
 
     # 엔진 레포 가드
-    if cwd.startswith("/Users/grove/WorkSpace/wiki3") or cwd.startswith("/Users/grove/WorkSpace/wiki4"):
+    if is_engine_repo(cwd):
         sys.exit(0)
     if not transcript or not os.path.isfile(transcript):
         sys.exit(0)

@@ -1,7 +1,7 @@
-<!-- wiki4-agent auto-consult v3.0 begin -->
-## LLM Wiki Auto-Consult (wiki4-agent v3.0 — Hybrid mode)
+<!-- wiki-agent auto-consult v3.0 begin -->
+## LLM Wiki Auto-Consult (wiki-agent v3.0 — Hybrid mode)
 
-이 블록은 `wiki4-agent` npm 패키지가 `~/.claude/CLAUDE.md`에 주입한 것. `npm uninstall -g wiki4-agent`로 marker 블록만 자동 제거.
+이 블록은 `wiki-agent` npm 패키지가 `~/.claude/CLAUDE.md`에 주입한 것. `npm uninstall -g wiki-agent`로 marker 블록만 자동 제거.
 
 ### 동작 방식 (Hybrid)
 
@@ -224,5 +224,5 @@ Hook·auto-consult는 **읽기 전용**. 새 wiki 페이지를 자동 생성하�
 
 - 임시 비활성: `export WIKI_AUTOCONSULT=0`
 - Strict 격리 (현재 프로젝트만): `export WIKI_SCOPE=current`
-- 영구 제거: `npm uninstall -g wiki4-agent`
-<!-- wiki4-agent auto-consult v3.0 end -->
+- 영구 제거: `npm uninstall -g wiki-agent`
+<!-- wiki-agent auto-consult v3.0 end -->

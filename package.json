@@ -1,8 +1,17 @@
 {
-  "name": "wiki4-agent",
+  "name": "wiki-agent",
   "version": "0.1.0",
   "description": "Claude Code용 LLM Wiki — 매 프롬프트마다 프로젝트 위키를 자동 주입하고 [[wiki-link]] 인용을 hook으로 강제하는 결정론 레이어",
-  "private": true,
+  "license": "MIT",
+  "author": "Taehun Kim",
+  "homepage": "https://github.com/Grove-hun/wiki#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Grove-hun/wiki.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Grove-hun/wiki/issues"
+  },
   "keywords": [
     "claude-code",
     "claude",

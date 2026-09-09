@@ -235,7 +235,7 @@ scope=all이면 프로젝트별 소계 + 전체 합계 제공.
 - **`--auto-fix` 범위 제한**: trivial(tags/created/updated/섹션 순서)만. 구조·필수필드·id 변경 금지
 - 리포트 외 wiki 파일 수정 금지 (`--auto-fix` 예외)
 - `$SRC` 소스 파일 절대 건드리지 않음
-- 엔진 레포(wiki3/wiki4) 가드
+- 엔진 레포(`$WIKI_ENGINE_ROOT`) 가드
 - **모드 `block`일 때만** 🔴 발견 시 exit 1 (그 외엔 exit 0 — 리포트용)
 
 ## 반환

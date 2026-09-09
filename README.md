@@ -56,7 +56,7 @@ LLM과 일하면서 마주치는 두 가지 만성 문제를 해결합니다:
 1. **환각(hallucination)** — Claude가 모르는 걸 모른다고 안 하고 그럴듯하게 만들어냄
 2. **휘발성** — 어렵게 합성한 답이 대화창 닫으면 사라짐. 다음에 같은 질문 또 함
 
-wiki4-agent는:
+wiki-agent는:
 
 - 프로젝트별 마크다운 위키를 만들어 두고
 - Claude가 답할 때 자동으로 그 위키를 참조하게 하고
@@ -82,7 +82,7 @@ Andrej Karpathy가 X에 제안한 "LLM Wiki" 컨셉의 핵심:
 | Discoverability    | index, 도메인 분류, 빠른 탐색                          |
 | Anti-hallucination | "wiki에 없으면 없다고 명시" 의무                       |
 
-### wiki4-agent의 확장
+### wiki-agent의 확장
 
 Karpathy 원안 + 다음을 추가:
 
@@ -136,17 +136,24 @@ Karpathy 원안 + 다음을 추가:
 ### 설치 명령
 
 ```bash
-# 패키지 글로벌 설치
-npm install -g wiki4-agent
+# npm 레지스트리에서
+npm install -g wiki-agent
 
-# postinstall이 자동 실행됨
-# - WIKI_PATH 자동 감지·설정
-# - 그룹·프로젝트 매핑 인터랙티브 입력
-# - 7개 스킬 → ~/.claude/skills/ 심링크
-# - hook → ~/.claude/hooks/ 심링크
-# - hook을 ~/.claude/settings.json에 등록
-# - auto-consult 정책 블록을 ~/.claude/CLAUDE.md에 주입
+# 또는 소스에서
+git clone https://github.com/Grove-hun/wiki.git
+cd wiki && npm install -g .
 ```
+
+`postinstall`이 자동으로 실행됩니다:
+
+- 위키 저장 폴더 지정 (사용자 입력, 기본 제안 `~/wiki-docs`)
+- 그룹 이름 입력 (사용자 입력, git remote에서 추측 제안)
+- 프로젝트→그룹 매핑 (선택)
+- 7개 스킬 → `~/.claude/skills/` 심링크
+- hook 2종 → `~/.claude/hooks/` 심링크 + `settings.json` 등록
+- auto-consult 정책 블록을 `~/.claude/CLAUDE.md`에 주입
+
+하드코딩된 조직 목록이나 고정 경로는 없습니다. 전부 설치 시 지정하고, 이후 `/wiki-config`로 바꿉니다.
 
 수동 재설치 필요시:
 
@@ -160,60 +167,64 @@ npm run install:manual
 
 설치 중 인터랙티브 프롬프트:
 
-### Step 1 — WIKI_PATH 자동 감지
+### Step 1 — 위키를 저장할 폴더 지정
+
+기존 폴더가 있으면 자동 감지해 제안하고, 없으면 `~/wiki-docs`를 제안합니다.
+Enter로 제안을 받거나, 원하는 경로를 직접 입력하면 됩니다 (`~` 사용 가능).
 
 ```
-[wiki4-agent] WIKI_PATH 자동 감지 후보를 검색 중...
-[wiki4-agent] WIKI_PATH 감지: ~/WorkSpace/wiki4docs
-
-(또는)
-
-[wiki4-agent] WIKI_PATH 후보 없음 → 기본값 생성: ~/WorkSpace/wiki4docs
+  [WIKI_PATH] 위키 마크다운을 저장할 폴더를 지정하세요.
+  소스 레포와 분리된 곳을 권장합니다 — 패키지를 지워도 위키는 남습니다.
+  저장 폴더 [~/wiki-docs]: ⏎
+  → 새로 생성: ~/wiki-docs
 ```
 
-후보 위치 (우선순위 순):
+자동 감지 후보 (우선순위 순): `~/wiki-docs`, `~/WorkSpace/wiki-docs`, `~/Documents/wiki-docs`,
+`~/Projects/wiki-docs`, `~/Code/wiki-docs`, `~/Dev/wiki-docs`, `~/wiki-data`
 
-- `~/wiki4docs`, `~/WorkSpace/wiki4docs`, `~/Documents/wiki4docs`,
-- `~/Projects/wiki4docs`, `~/Code/wiki4docs`, `~/Dev/wiki4docs`, `~/wiki-data` 등
+### Step 2 — 그룹 이름 입력
 
-### Step 2 — 그룹 선택
+그룹은 위키를 나누는 단위입니다. 회사·팀·클라이언트·개인 등 **무엇이든 됩니다** —
+정해진 목록은 없고, 입력한 이름이 그대로 폴더 이름이 됩니다.
 
 ```
-[WIKI_ORGS] 등록된 조직 목록:
-  1. TT
-  2. BeautyPoint
-  3. Krafton
-  4. Hongkong
-  5. SI
+  [WIKI_ORGS] 위키를 나눌 "그룹" 이름을 직접 입력하세요.
+  회사·팀·클라이언트·개인 등 프로젝트를 묶는 단위면 무엇이든 됩니다.
+  그룹은 그대로 폴더 이름이 됩니다 — <저장 폴더>/<그룹>/<프로젝트>/wiki/
 
-담당 조직 번호 (쉼표 구분, 단일 or 다중, 비우면 전체):
-> 3
-→ 선택: Krafton
+  그룹 이름 (쉼표 구분) [git remote에서 감지: acme]: Acme,Contoso
+  → 그룹: Acme, Contoso
+  기본 그룹 [Acme]: ⏎
 ```
 
-> ⚠️ 현재 `DEFAULT_ORGS`가 하드코딩돼있음. 본인 회사가 목록에 없으면 임시로 하나 골라 설치 후 `/wiki-config`로 추가하면 됨.
+Enter만 치면 설치를 실행한 폴더의 git remote에서 org를 추측해 씁니다
+(`github.com/acme/repo` → `acme`). remote가 없으면 `Personal` 하나로 시작합니다.
+그룹은 언제든 `/wiki-config`로 추가·제거할 수 있습니다.
+
+> 이름은 그대로 디렉토리가 되므로 `/`, `\`, `..`가 들어간 입력은 거부됩니다.
 
 ### Step 3 — 프로젝트 매핑 (선택)
 
-```
-[WIKI_PROJECT_ORGS] (선택) 자주 쓰는 프로젝트를 그룹에 매핑:
-  예: pubgcom-app-front=Krafton,windless-app-front=Krafton
+그룹이 2개 이상일 때만 물어봅니다. 비워도 되고, 이후 `/wiki-config`에서 추가할 수 있습니다.
 
-매핑 입력 (비우면 나중에 자동 감지/수동):
-> pubgcom-app-front=Krafton,windless-app-front=Krafton
 ```
+  [WIKI_PROJECT_ORGS] (선택) 자주 쓰는 프로젝트를 그룹에 매핑해두면 hook이 자동 감지:
+  입력 형식: "project1=group1,project2=group2" (Enter로 건너뛰고 나중에 지정 가능)
+  예: web-front=Acme,api-server=Contoso
 
-비워두면 이후 `/wiki-config`에서 추가 가능.
+  매핑 입력 (비우면 나중에 자동 감지/수동): ⏎
+  → 매핑 비움. /wiki 첫 실행 시 자동 또는 수동 매핑.
+```
 
 ### Step 4 — 설치 완료 안내
 
 ```
-[wiki4-agent] 설치 완료.
+[wiki-agent] 설치 완료.
 
-  WIKI_PATH         = /Users/.../wiki4docs
-  WIKI_ORGS         = TT,BeautyPoint,Krafton,Hongkong,SI
-  WIKI_DEFAULT_ORG  = Krafton
-  WIKI_PROJECT_ORGS = pubgcom-app-front=Krafton,windless-app-front=Krafton
+  WIKI_PATH         = ~/wiki-docs
+  WIKI_ORGS         = Acme,Contoso
+  WIKI_DEFAULT_ORG  = Acme
+  WIKI_PROJECT_ORGS =
 
 사용:
   cd <소스 레포> && claude
@@ -222,6 +233,18 @@ npm run install:manual
   /wiki-lint       — 독립 점검
   /wiki-resolve    — 판례 기반 실 파일 수정
 ```
+
+### 비대화형 설치 (CI·자동화)
+
+TTY가 없으면 **질문 없이** 기본값으로 끝냅니다. 설치가 멈추는 일은 없습니다.
+
+```
+[wiki-agent] 비대화형 — WIKI_PATH 기본값 사용: ~/wiki-docs
+[wiki-agent] 비대화형 — WIKI_ORGS 기본값 사용: Personal
+[wiki-agent] 비대화형 — project→그룹 매핑 건너뜀 (/wiki-config로 추가)
+```
+
+나중에 `/wiki-config`로 바꾸거나, TTY에서 `npm run install:manual`을 다시 실행하면 됩니다.
 
 ---
 
@@ -236,8 +259,8 @@ npm run install:manual
 ├── settings.json                    ← env + UserPromptSubmit + Stop 등록
 ├── CLAUDE.md                         ← auto-consult 정책 블록 주입됨
 ├── hooks/
-│   ├── wiki4-auto-consult.py        ← UserPromptSubmit 심링크
-│   └── wiki4-cite-verify.py         ← Stop 심링크 (인용 검증)
+│   ├── wiki-auto-consult.py        ← UserPromptSubmit 심링크
+│   └── wiki-cite-verify.py         ← Stop 심링크 (인용 검증)
 └── skills/
     ├── wiki/                         ← 심링크
     ├── wiki-clarify/
@@ -251,9 +274,9 @@ npm run install:manual
 ### `$WIKI_PATH/` (위키 데이터)
 
 ```
-$WIKI_PATH/                          ← 예: ~/WorkSpace/wiki4docs/
-└── <Group>/                         ← 예: Krafton/
-    └── <Project>/                   ← 예: windless-app-front/
+$WIKI_PATH/                          ← 예: ~/WorkSpace/wiki-docs/
+└── <Group>/                         ← 예: Acme/
+    └── <Project>/                   ← 예: admin-front/
         └── wiki/
             ├── index.md             ← ToC, 자동 갱신
             ├── log.md               ← 인제스트 히스토리
@@ -266,7 +289,7 @@ $WIKI_PATH/                          ← 예: ~/WorkSpace/wiki4docs/
             ├── actions/             ← /wiki-resolve 적용 기록
             ├── lint-reports/        ← /wiki-lint 결과
             ├── clarifications/      ← /wiki-clarify Q&A 저장
-            └── .wiki4-index.json    ← inverted index (선택, 100+ 페이지에서 권장)
+            └── .wiki-index.json    ← inverted index (선택, 100+ 페이지에서 권장)
 ```
 
 ---
@@ -359,12 +382,12 @@ Claude 답변
 
 V1 위반:
 ```
-⚠️ wiki4: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
+⚠️ wiki-agent: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
 ```
 
 V2 위반:
 ```
-⚠️ wiki4: wiki 컨텍스트 받았는데 [[wiki-link]] 인용 0건 — 정책 위반
+⚠️ wiki-agent: wiki 컨텍스트 받았는데 [[wiki-link]] 인용 0건 — 정책 위반
 ```
 
 ### 위반 발견 시 사용자 행동
@@ -390,7 +413,7 @@ unset WIKI_CITE_VERIFY
 ### Skip 조건 (조용히 넘김)
 
 - 답변 길이 < 100자 (잡담)
-- 엔진 레포 (wiki3/wiki4)
+- 엔진 레포 (`$WIKI_ENGINE_ROOT` 하위)
 - transcript 없음
 - wiki context 안 받음 (V2 검사 skip)
 - 정상 인용만 있음 (V1 통과)
@@ -423,7 +446,7 @@ unset WIKI_CITE_VERIFY
 7. **`/wiki-validate` 게이트** — schema·링크·중복 검증 통과해야 진행
 8. **`/wiki-commit`** — git repo면 자동 커밋
 9. `index.md`·`log.md` 갱신
-10. `.wiki4-index.json` 증분 갱신
+10. `.wiki-index.json` 증분 갱신
 
 **예**:
 
@@ -595,18 +618,18 @@ if (timeDiff > 80) streamId++;
 ### 시나리오 4 — Cross-project 검색
 
 ```bash
-$ cd ~/projects/pubgcom-app-front  # Krafton 그룹
+$ cd ~/projects/web-front  # Acme 그룹
 $ claude
 
 > 뉴스레터 발송 어떻게 했어?
 
-[Hook] 현재 프로젝트엔 매칭 약함 → org-wide 검색 → windless-app-front 매칭
-[Hook signal] cross-top=windless-app-front
+[Hook] 현재 프로젝트엔 매칭 약함 → org-wide 검색 → admin-front 매칭
+[Hook signal] cross-top=admin-front
 
 [Claude 답변]
-현재 프로젝트 wiki에는 없어 같은 그룹의 `windless-app-front`에서 참조합니다.
+현재 프로젝트 wiki에는 없어 같은 그룹의 `admin-front`에서 참조합니다.
 
-[[windless-app-front: concepts/ui/date-input-dual-picker]]에 따르면...
+[[admin-front: concepts/ui/date-input-dual-picker]]에 따르면...
 ```
 
 ### 시나리오 5 — 인용 검증 (cite-verify) 자동 동작
@@ -630,7 +653,7 @@ $ claude
 [Claude 답변 — Claude가 환각으로 없는 페이지 인용]
 [[concepts/auth/jwt-rs256]]에 정리... ...
 
-⚠️ wiki4: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
+⚠️ wiki-agent: 깨진 인용 1건 — [[concepts/auth/jwt-rs256]]
 
 > 그 페이지 없네. 진짜 있는 인증 페이지 찾아서 다시 답해줘
 
@@ -685,20 +708,20 @@ $ claude
 
 같은 회사·팀이 여러 프로젝트를 다루는 경우:
 
-- 같은 그룹 내에선 cross-project 지식 공유 (예: Krafton/pubgcom과 Krafton/windless가 비슷한 패턴 공유)
-- 다른 그룹은 격리 (예: Krafton과 BeautyPoint는 분리)
+- 같은 그룹 내에선 cross-project 지식 공유 (예: Acme/web-front와 Acme/admin-front가 비슷한 패턴 공유)
+- 다른 그룹은 격리 (예: Acme과 Contoso는 분리)
 
 ### 그룹(Group) 해석 우선순위
 
 ```
 1. WIKI_PROJECT_ORGS 명시 매핑
-   "pubgcom-app-front=Krafton,windless-app-front=Krafton"
+   "web-front=Acme,admin-front=Acme"
 
 2. WIKI_ORG_REMOTE_PATTERNS git remote URL 패턴
-   "github.com/krafton-inc=Krafton,gitlab.com/acme=Acme"
+   "github.com/acme-inc=Acme,gitlab.com/acme=Acme"
 
 3. WIKI_DEFAULT_ORG 폴백
-   "Krafton"
+   "Acme"
 ```
 
 ### 검색 범위(Scope)
@@ -779,11 +802,12 @@ tags: [...]
 
 | 변수                       | 의미                           | 예시                                           |
 | -------------------------- | ------------------------------ | ---------------------------------------------- |
-| `WIKI_PATH`                | 위키 저장 루트                 | `~/WorkSpace/wiki4docs`                        |
-| `WIKI_ORGS`                | 등록된 그룹 (CSV)              | `TT,BeautyPoint,Krafton`                       |
-| `WIKI_DEFAULT_ORG`         | 기본 그룹                      | `Krafton`                                      |
-| `WIKI_PROJECT_ORGS`        | 프로젝트→그룹 매핑 (CSV)       | `pubgcom-app-front=Krafton`                    |
-| `WIKI_ORG_REMOTE_PATTERNS` | git remote URL 패턴 매칭 (CSV) | `github.com/krafton=Krafton`                   |
+| `WIKI_PATH`                | 위키 저장 루트 (설치 시 사용자 지정) | `~/wiki-docs`                            |
+| `WIKI_ENGINE_ROOT`         | 이 패키지의 소스 트리 (자동)   | 엔진 레포 가드가 참조. install이 주입          |
+| `WIKI_ORGS`                | 등록된 그룹 (CSV)              | `Initech,Contoso,Acme`                       |
+| `WIKI_DEFAULT_ORG`         | 기본 그룹                      | `Acme`                                      |
+| `WIKI_PROJECT_ORGS`        | 프로젝트→그룹 매핑 (CSV)       | `web-front=Acme`                    |
+| `WIKI_ORG_REMOTE_PATTERNS` | git remote URL 패턴 매칭 (CSV) | `github.com/acme=Acme`                   |
 | `WIKI_SCOPE`               | 검색 범위                      | `org-wide` (기본) / `current` (strict)         |
 | `WIKI_AUTOCONSULT`         | 자동 참조 on/off               | (미설정·기본) / `0` (비활성)                   |
 | `WIKI_CITE_VERIFY`         | 인용 검증 on/off               | (미설정·기본=활성) / `0` (비활성)              |
@@ -812,14 +836,14 @@ ls $WIKI_PATH/<group>/<project>/wiki/
 tail -50 ~/.claude/hooks/wiki-auto-consult.log
 
 # 4. hook 직접 호출 시뮬레이션
-echo '{"prompt":"test","cwd":"<project_path>"}' | python3 ~/.claude/hooks/wiki4-auto-consult.py
+echo '{"prompt":"test","cwd":"<project_path>"}' | python3 ~/.claude/hooks/wiki-auto-consult.py
 ```
 
 ### wiki에 매칭이 잘 안 됨
 
 ```bash
 # 인덱스 빌드 (페이지 많을 때 검색 가속)
-python3 ~/WorkSpace/wiki4/scripts/hooks/wiki-build-index.py --full $WIKI_PATH/<group>/<project>/wiki/
+python3 "$WIKI_ENGINE_ROOT/scripts/hooks/wiki-build-index.py" --full "$WIKI_PATH/<group>/<project>/wiki/"
 
 # 키워드 매칭은 한국어/영어 토큰 기반. STOPWORDS 우회는 hook 코드 수정 필요
 ```
@@ -841,32 +865,33 @@ cp ~/.claude/settings.json.bak-<latest> ~/.claude/settings.json
 
 ```bash
 # CLAUDE.md에 auto-consult 블록 있는지
-grep -n "wiki4-agent auto-consult" ~/.claude/CLAUDE.md
+grep -n "wiki-agent auto-consult" ~/.claude/CLAUDE.md
 
 # 없으면 재설치
 npm run install:manual
 ```
 
-### 엔진 레포(wiki4 자기자신)에서 hook 비활성
+### 엔진 레포(이 패키지 자신)에서 hook 비활성
 
-설계상 의도. wiki4 디렉토리 안에선 자기 자신을 wiki로 참조하지 않음.
+설계상 의도. `$WIKI_ENGINE_ROOT` 안에선 자기 자신을 wiki로 참조하지 않음.
+판별은 `WIKI_ENGINE_ROOT` 우선, 없으면 상위로 올라가며 `scripts/hooks/wiki-auto-consult.py` 탐색.
 
 ### cite-verify가 동작 안 함
 
 ```bash
 # 1. Stop hook 등록 확인
 python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); print(d.get('hooks',{}).get('Stop'))"
-# → wiki4-cite-verify.py 항목 보여야 함
+# → wiki-cite-verify.py 항목 보여야 함
 
 # 2. 심링크 확인
-ls -la ~/.claude/hooks/wiki4-cite-verify.py
+ls -la ~/.claude/hooks/wiki-cite-verify.py
 
 # 3. opt-out 안 됐는지
 echo "WIKI_CITE_VERIFY=$WIKI_CITE_VERIFY"
 # → "0"이면 비활성, 그 외 (미설정 포함) 활성
 
 # 4. hook 직접 호출 (수동 검증)
-echo '{"transcript_path":"<transcript path>","cwd":"<project path>"}' | python3 ~/.claude/hooks/wiki4-cite-verify.py
+echo '{"transcript_path":"<transcript path>","cwd":"<project path>"}' | python3 ~/.claude/hooks/wiki-cite-verify.py
 ```
 
 깨진 인용·인용 누락 발견 시 stderr로 한 줄 출력. 정상 답변은 조용히 skip.
@@ -886,12 +911,12 @@ export WIKI_CITE_VERIFY=0
 
 ```bash
 # npm uninstall — preuninstall hook이 자동 정리
-npm uninstall -g wiki4-agent
+npm uninstall -g wiki-agent
 
 # 자동 정리 항목:
 # - ~/.claude/skills/wiki* 심링크 제거
-# - ~/.claude/hooks/wiki4-auto-consult.py 심링크 제거
-# - ~/.claude/hooks/wiki4-cite-verify.py 심링크 제거
+# - ~/.claude/hooks/wiki-auto-consult.py 심링크 제거
+# - ~/.claude/hooks/wiki-cite-verify.py 심링크 제거
 # - settings.json hooks (UserPromptSubmit + Stop) 등록 해제
 # - CLAUDE.md auto-consult 블록 제거 (마커 사이 영역만)
 
@@ -904,8 +929,11 @@ rm -rf $WIKI_PATH
 
 ## 라이선스 / 기여
 
-- 개인 프로젝트. 외부 배포 시 라이선스 결정 필요.
-- 이슈·PR 환영.
+[MIT](LICENSE) — 자유롭게 쓰고 고치고 배포해도 됩니다.
+
+이슈·PR 환영합니다. 다이어그램을 고칠 때는 SVG를 직접 수정하지 말고
+`docs/build-diagrams.mjs`를 고친 뒤 `node docs/build-diagrams.mjs`로 다시 생성해 주세요
+(light/dark 두 벌이 함께 나옵니다).
 
 ---
 

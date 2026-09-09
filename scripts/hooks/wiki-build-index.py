@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-wiki4-agent Inverted Index Builder
+wiki-agent Inverted Index Builder
 
 입력: wiki 루트 경로 ($WIKI_PATH/<project>/wiki)
-출력: <wiki_root>/.wiki4-index.json (token → pages 역인덱스)
+출력: <wiki_root>/.wiki-index.json (token → pages 역인덱스)
 
 모드:
   --full <wiki_root>                — 전체 재빌드
@@ -46,7 +46,7 @@ import argparse
 from collections import defaultdict, Counter
 from datetime import datetime
 
-INDEX_FILENAME = ".wiki4-index.json"
+INDEX_FILENAME = ".wiki-index.json"
 INDEX_VERSION = 1
 
 STOPWORDS = {

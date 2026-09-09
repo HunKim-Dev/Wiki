@@ -20,7 +20,7 @@ description: 다른 스킬(/wiki, /wiki-resolve) 실행 중 맥락이 부족할 
 실행 전 확인:
 
 1. `$WIKI_PATH` 설정 + 실존 디렉토리
-2. cwd가 엔진 레포(wiki3/wiki4) 아님
+2. cwd가 엔진 레포(`$WIKI_ENGINE_ROOT`) 아님
 
 ## 입력
 
@@ -88,7 +88,7 @@ tags: []
 - 모순이 감지되면 반드시 질문 (추론 금지).
 - 답변 파일명은 `wiki/clarifications/<날짜>-<슬러그>.md` (충돌 시 `-1`, `-2`).
 - 답변 저장 후 곧바로 다른 wiki 페이지에 반영하지 않는다 — 반영은 `/wiki`의 책임.
-- 엔진 레포(wiki3/wiki4) 수정 금지.
+- 엔진 레포(`$WIKI_ENGINE_ROOT`) 수정 금지.
 
 ## 반환
 

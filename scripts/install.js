@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// wiki4-agent postinstall:
+// wiki-agent postinstall:
 //   1) WIKI_PATH 자동 감지 → ~/.claude/settings.json env.WIKI_PATH 주입
 //   2) WIKI_ORGS 인터랙티브 선택 → settings.json env.WIKI_ORGS / WIKI_DEFAULT_ORG
 //   3) skills/*/ → ~/.claude/skills/*/ 심볼릭 링크
@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const os = require('os');
 const readline = require('readline');
 
@@ -22,36 +23,89 @@ const SETTINGS_FILE = path.join(HOME, '.claude', 'settings.json');
 const AUTO_CONSULT_TEMPLATE = path.join(PKG_ROOT, 'scripts', 'auto-consult-template.md');
 const HOOK_SRC = path.join(PKG_ROOT, 'scripts', 'hooks', 'wiki-auto-consult.py');
 const HOOK_DEST_DIR = path.join(HOME, '.claude', 'hooks');
-const HOOK_DEST = path.join(HOOK_DEST_DIR, 'wiki4-auto-consult.py');
+const HOOK_DEST = path.join(HOOK_DEST_DIR, 'wiki-auto-consult.py');
 // Stop hook (인용 검증, 2026-04-29 신규)
 const CITE_HOOK_SRC = path.join(PKG_ROOT, 'scripts', 'hooks', 'wiki-cite-verify.py');
-const CITE_HOOK_DEST = path.join(HOOK_DEST_DIR, 'wiki4-cite-verify.py');
+const CITE_HOOK_DEST = path.join(HOOK_DEST_DIR, 'wiki-cite-verify.py');
+// v0.1 이전 이름. 중복 등록·유령 심볼릭 링크를 막기 위해 설치 때 정리한다.
+const LEGACY_HOOK_DESTS = [
+  path.join(HOOK_DEST_DIR, 'wiki4-auto-consult.py'),
+  path.join(HOOK_DEST_DIR, 'wiki4-cite-verify.py'),
+  path.join(HOOK_DEST_DIR, 'wiki4-auto-consult.sh'),
+  path.join(HOOK_DEST_DIR, 'wiki4-audit-trigger.py'),
+];
 // 구·신 버전 마커 모두 매칭 (regex)
-const MARKER_RE_BEGIN = /<!--\s*wiki4-agent auto-consult v\d+\.\d+ begin\s*-->/;
-const MARKER_RE_END = /<!--\s*wiki4-agent auto-consult v\d+\.\d+ end\s*-->/;
+const MARKER_RE_BEGIN = /<!--\s*wiki4?-agent auto-consult v\d+\.\d+ begin\s*-->/;
+const MARKER_RE_END = /<!--\s*wiki4?-agent auto-consult v\d+\.\d+ end\s*-->/;
 
 const WIKI_PATH_CANDIDATES = [
-  path.join(HOME, 'wiki4docs'),
-  path.join(HOME, 'WorkSpace', 'wiki4docs'),
-  path.join(HOME, 'workspace', 'wiki4docs'),
-  path.join(HOME, 'Documents', 'wiki4docs'),
-  path.join(HOME, 'Projects', 'wiki4docs'),
-  path.join(HOME, 'projects', 'wiki4docs'),
-  path.join(HOME, 'Code', 'wiki4docs'),
-  path.join(HOME, 'code', 'wiki4docs'),
-  path.join(HOME, 'Dev', 'wiki4docs'),
-  path.join(HOME, 'dev', 'wiki4docs'),
-  path.join(HOME, 'src', 'wiki4docs'),
+  path.join(HOME, 'wiki-docs'),
+  path.join(HOME, 'WorkSpace', 'wiki-docs'),
+  path.join(HOME, 'workspace', 'wiki-docs'),
+  path.join(HOME, 'Documents', 'wiki-docs'),
+  path.join(HOME, 'Projects', 'wiki-docs'),
+  path.join(HOME, 'projects', 'wiki-docs'),
+  path.join(HOME, 'Code', 'wiki-docs'),
+  path.join(HOME, 'code', 'wiki-docs'),
+  path.join(HOME, 'Dev', 'wiki-docs'),
+  path.join(HOME, 'dev', 'wiki-docs'),
+  path.join(HOME, 'src', 'wiki-docs'),
   path.join(HOME, 'wiki-data'),
+  // v0.1 이전 기본 폴더명. 기존 사용자가 재설치해도 그대로 찾아가도록 남겨둔다.
+  path.join(HOME, 'WorkSpace', 'wiki4docs'),
+  path.join(HOME, 'wiki4docs'),
 ];
-const DEFAULT_WIKI_PATH = path.join(HOME, 'WorkSpace', 'wiki4docs');
+const DEFAULT_WIKI_PATH = path.join(HOME, 'wiki-docs');
 
-// ax_wiki_agent와 동일 초기 목록. 사용자는 여기서 1개+ 선택.
-// 신규 org 추가는 사용자가 settings.json의 WIKI_ORGS CSV 직접 편집 OR 소스 수정 후 재설치.
-const DEFAULT_ORGS = ['TT', 'BeautyPoint', 'Krafton', 'Hongkong', 'SI'];
+// 그룹 목록은 하드코딩하지 않는다 — 설치 시 사용자가 직접 입력한다.
+// 입력이 없고 git remote도 못 읽으면 이 이름 하나로 시작한다.
+const FALLBACK_ORG = 'Personal';
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+// npm postinstall은 CI·자동화에서 TTY 없이 돌 수 있다. 그때는 절대 멈추지 않는다.
+function isInteractive() {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+// "~/foo" · 상대경로 → 절대경로
+function expandPath(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return '';
+  if (raw === '~') return HOME;
+  if (raw.startsWith('~/')) return path.resolve(HOME, raw.slice(2));
+  return path.resolve(raw);
+}
+
+// 출력용 축약 — 사용자 홈 경로를 그대로 노출하지 않는다
+function tildify(p) {
+  return p && p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p;
+}
+
+// 그룹 이름은 그대로 폴더 이름이 된다 — 경로 구분자·상위 이동 차단
+function sanitizeOrg(name) {
+  const v = String(name || '').trim();
+  if (!v || v === '.' || v === '..') return '';
+  if (/[\\/]/.test(v)) return '';
+  return v;
+}
+
+// 설치를 실행한 폴더의 git remote에서 org를 추측 (예: github.com/acme/repo → acme)
+function guessOrgFromGitRemote() {
+  const cwd = process.env.INIT_CWD || process.cwd();
+  try {
+    const url = execSync('git config --get remote.origin.url', {
+      cwd,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString().trim();
+    if (!url) return '';
+    const m = url.match(/[:/]([^/:]+)\/[^/]+?(?:\.git)?$/);
+    return m ? sanitizeOrg(m[1]) : '';
+  } catch (err) {
+    return '';
+  }
 }
 
 function prompt(question) {
@@ -79,7 +133,7 @@ function readSettings() {
     return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   } catch (e) {
     const backup = `${SETTINGS_FILE}.bak-${Date.now()}`;
-    console.error(`[wiki4-agent] ${SETTINGS_FILE} 파싱 실패 (${e.message}) → 백업: ${backup}`);
+    console.error(`[wiki-agent] ${SETTINGS_FILE} 파싱 실패 (${e.message}) → 백업: ${backup}`);
     fs.copyFileSync(SETTINGS_FILE, backup);
     return {};
   }
@@ -90,28 +144,43 @@ function writeSettings(data) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
-function ensureWikiPath() {
+async function ensureWikiPath() {
   const settings = readSettings();
   const existingPath = settings.env && settings.env.WIKI_PATH;
 
   if (existingPath && fs.existsSync(existingPath) && fs.statSync(existingPath).isDirectory()) {
-    console.log(`[wiki4-agent] WIKI_PATH 유지: ${existingPath}`);
+    // 패키지 위치는 재설치마다 달라질 수 있으므로 ENGINE_ROOT는 항상 갱신.
+    settings.env.WIKI_ENGINE_ROOT = PKG_ROOT;
+    writeSettings(settings);
+    console.log(`[wiki-agent] WIKI_PATH 유지: ${tildify(existingPath)}`);
     return existingPath;
   }
 
-  let chosen = discoverWikiPath();
-  if (chosen) {
-    console.log(`[wiki4-agent] WIKI_PATH 자동 감지: ${chosen}`);
+  const suggested = discoverWikiPath() || DEFAULT_WIKI_PATH;
+  let chosen = suggested;
+
+  if (isInteractive()) {
+    console.log('');
+    console.log('  [WIKI_PATH] 위키 마크다운을 저장할 폴더를 지정하세요.');
+    console.log('  소스 레포와 분리된 곳을 권장합니다 — 패키지를 지워도 위키는 남습니다.');
+    const answer = await prompt(`  저장 폴더 [${tildify(suggested)}]: `);
+    chosen = expandPath(answer) || suggested;
   } else {
-    chosen = DEFAULT_WIKI_PATH;
+    console.log(`[wiki-agent] 비대화형 — WIKI_PATH 기본값 사용: ${tildify(chosen)}`);
+  }
+
+  if (fs.existsSync(chosen)) {
+    console.log(`  → 기존 폴더 사용: ${tildify(chosen)}`);
+  } else {
     ensureDir(chosen);
-    console.log(`[wiki4-agent] WIKI_PATH 후보 없음 → 기본값 생성: ${chosen}`);
+    console.log(`  → 새로 생성: ${tildify(chosen)}`);
   }
 
   settings.env = settings.env || {};
   settings.env.WIKI_PATH = chosen;
+  settings.env.WIKI_ENGINE_ROOT = PKG_ROOT;
   writeSettings(settings);
-  console.log(`[wiki4-agent] ~/.claude/settings.json env.WIKI_PATH 주입 완료`);
+  console.log(`[wiki-agent] ~/.claude/settings.json env.WIKI_PATH 주입 완료`);
   return chosen;
 }
 
@@ -122,51 +191,51 @@ async function ensureOrgs() {
   const existingOrgs = settings.env && settings.env.WIKI_ORGS;
 
   if (existingOrgs) {
-    const orgList = existingOrgs.split(',').map(s => s.trim()).filter(Boolean);
-    console.log(`[wiki4-agent] WIKI_ORGS 유지: ${orgList.join(', ')}`);
+    const orgList = existingOrgs.split(',').map((v) => v.trim()).filter(Boolean);
+    console.log(`[wiki-agent] WIKI_ORGS 유지: ${orgList.join(', ')}`);
     return orgList;
   }
 
-  console.log('');
-  console.log('  [WIKI_ORGS] 등록된 조직 목록:');
-  DEFAULT_ORGS.forEach((o, i) => console.log(`    ${i + 1}. ${o}`));
-  console.log('');
+  // 그룹 목록을 미리 정해두지 않는다. git remote에서 추측한 값을 제안만 한다.
+  const guessed = guessOrgFromGitRemote();
+  let selected = [guessed || FALLBACK_ORG];
 
-  const sel = (await prompt('  담당 조직 번호 (쉼표 구분, 단일 or 다중, 비우면 전체): ')).trim();
-  let selected = [];
-  if (!sel) {
-    selected = [...DEFAULT_ORGS];
-    console.log(`  → 전체 선택`);
+  if (isInteractive()) {
+    console.log('');
+    console.log('  [WIKI_ORGS] 위키를 나눌 "그룹" 이름을 직접 입력하세요.');
+    console.log('  회사·팀·클라이언트·개인 등 프로젝트를 묶는 단위면 무엇이든 됩니다.');
+    console.log('  그룹은 그대로 폴더 이름이 됩니다 — <저장 폴더>/<그룹>/<프로젝트>/wiki/');
+    console.log('');
+    const hint = guessed ? `git remote에서 감지: ${guessed}` : FALLBACK_ORG;
+    const raw = await prompt(`  그룹 이름 (쉼표 구분) [${hint}]: `);
+    const typed = [...new Set(raw.split(',').map(sanitizeOrg).filter(Boolean))];
+    if (typed.length > 0) selected = typed;
+    console.log(`  → 그룹: ${selected.join(', ')}`);
   } else {
-    const indices = sel.split(',').map(s => s.trim()).filter(Boolean);
-    for (const idx of indices) {
-      const n = Number(idx);
-      if (Number.isInteger(n) && n >= 1 && n <= DEFAULT_ORGS.length) {
-        selected.push(DEFAULT_ORGS[n - 1]);
-      }
-    }
-    if (selected.length === 0) {
-      selected = [...DEFAULT_ORGS];
-      console.log(`  → 유효한 선택 없음 — 전체 사용`);
-    } else {
-      console.log(`  → 선택: ${selected.join(', ')}`);
+    console.log(`[wiki-agent] 비대화형 — WIKI_ORGS 기본값 사용: ${selected.join(', ')}`);
+  }
+
+  let defaultOrg = selected[0];
+  if (selected.length > 1 && isInteractive()) {
+    const answer = (await prompt(`  기본 그룹 [${defaultOrg}]: `)).trim();
+    if (selected.includes(answer)) {
+      defaultOrg = answer;
+    } else if (answer) {
+      console.log(`  ⚠ "${answer}"는 입력한 그룹에 없음 — ${defaultOrg} 유지`);
     }
   }
 
-  const defaultOrg = selected[0];
   settings.env = settings.env || {};
   settings.env.WIKI_ORGS = selected.join(',');
   settings.env.WIKI_DEFAULT_ORG = defaultOrg;
-  // Initialize empty project mapping (method a lazy: filled as projects used)
   if (!settings.env.WIKI_PROJECT_ORGS) {
     settings.env.WIKI_PROJECT_ORGS = '';
   }
-  // Empty remote pattern mapping (method c: user fills as needed)
   if (!settings.env.WIKI_ORG_REMOTE_PATTERNS) {
     settings.env.WIKI_ORG_REMOTE_PATTERNS = '';
   }
   writeSettings(settings);
-  console.log(`[wiki4-agent] WIKI_ORGS·WIKI_DEFAULT_ORG 주입 완료 (기본: ${defaultOrg})`);
+  console.log(`[wiki-agent] WIKI_ORGS = ${selected.join(',')} (기본: ${defaultOrg})`);
   return selected;
 }
 
@@ -176,20 +245,25 @@ async function promptProjectOrgsMapping(orgs, wikiPath) {
 
   // 이미 매핑 있으면 유지
   if (existing.length > 0) {
-    console.log(`[wiki4-agent] WIKI_PROJECT_ORGS 유지: ${existing}`);
+    console.log(`[wiki-agent] WIKI_PROJECT_ORGS 유지: ${existing}`);
     return;
   }
 
   if (orgs.length === 1) {
     // 단일 org면 매핑 불필요 — 모든 프로젝트가 해당 org로 자동 귀속
-    console.log(`[wiki4-agent] 단일 org(${orgs[0]}) — project→org 매핑 불필요`);
+    console.log(`[wiki-agent] 단일 org(${orgs[0]}) — project→org 매핑 불필요`);
+    return;
+  }
+
+  if (!isInteractive()) {
+    console.log('[wiki-agent] 비대화형 — project→그룹 매핑 건너뜀 (/wiki-config로 추가)');
     return;
   }
 
   console.log('');
-  console.log('  [WIKI_PROJECT_ORGS] (선택) 자주 쓰는 프로젝트를 org에 매핑해두면 hook이 자동 감지:');
-  console.log(`  입력 형식: "project1=org1,project2=org2" (Enter로 건너뛰고 lazy로 위임 가능)`);
-  console.log(`  예: pubgcom-app-front=Krafton,windless-app-front=Krafton`);
+  console.log('  [WIKI_PROJECT_ORGS] (선택) 자주 쓰는 프로젝트를 그룹에 매핑해두면 hook이 자동 감지:');
+  console.log(`  입력 형식: "project1=group1,project2=group2" (Enter로 건너뛰고 나중에 지정 가능)`);
+  console.log(`  예: web-front=${orgs[0]},api-server=${orgs[orgs.length - 1]}`);
   console.log('');
 
   const mapping = (await prompt('  매핑 입력 (비우면 나중에 자동 감지/수동): ')).trim();
@@ -206,7 +280,7 @@ async function promptProjectOrgsMapping(orgs, wikiPath) {
     if (!m) continue;
     const [, proj, org] = m;
     if (!orgs.includes(org)) {
-      console.warn(`  ⚠ "${proj}"의 org="${org}"가 선택 목록에 없음 — 건너뜀`);
+      console.warn(`  ⚠ "${proj}"의 그룹 "${org}"가 입력한 그룹에 없음 — 건너뜀`);
       continue;
     }
     valid.push(`${proj.trim()}=${org.trim()}`);
@@ -227,13 +301,13 @@ async function promptProjectOrgsMapping(orgs, wikiPath) {
 function linkOne(src, dest, label) {
   try {
     if (!fs.existsSync(src)) {
-      console.warn(`[wiki4-agent] skip ${label}: 원본 없음 ${src}`);
+      console.warn(`[wiki-agent] skip ${label}: 원본 없음 ${src}`);
       return { status: 'skip-no-src' };
     }
     const lstat = fs.lstatSync(dest, { throwIfNoEntry: false });
     if (!lstat) {
       fs.symlinkSync(src, dest);
-      console.log(`[wiki4-agent] link ${label}`);
+      console.log(`[wiki-agent] link ${label}`);
       return { status: 'linked' };
     }
     if (lstat.isSymbolicLink()) {
@@ -241,16 +315,60 @@ function linkOne(src, dest, label) {
       if (existing === src) return { status: 'already-linked' };
       fs.unlinkSync(dest);
       fs.symlinkSync(src, dest);
-      console.log(`[wiki4-agent] relink ${label} (이전: ${existing})`);
+      console.log(`[wiki-agent] relink ${label} (이전: ${existing})`);
       return { status: 'relinked' };
     }
     console.warn(
-      `[wiki4-agent] conflict ${label}: 기존 파일/디렉토리 존재 → 건너뜀 (${dest})`
+      `[wiki-agent] conflict ${label}: 기존 파일/디렉토리 존재 → 건너뜀 (${dest})`
     );
     return { status: 'conflict' };
   } catch (err) {
-    console.error(`[wiki4-agent] error ${label}: ${err.message}`);
+    console.error(`[wiki-agent] error ${label}: ${err.message}`);
     return { status: 'error' };
+  }
+}
+
+// ---------- 구버전(wiki4-*) 잔재 정리 ----------
+
+// 이름이 바뀌기 전 설치본이 남아 있으면 hook이 두 번 등록돼 중복 실행된다.
+function cleanupLegacy() {
+  for (const dest of LEGACY_HOOK_DESTS) {
+    try {
+      const lstat = fs.lstatSync(dest, { throwIfNoEntry: false });
+      if (!lstat) continue;
+      if (!lstat.isSymbolicLink()) {
+        console.warn(`[wiki-agent] skip 구버전 정리: 심볼릭 링크 아님 → ${dest}`);
+        continue;
+      }
+      fs.unlinkSync(dest);
+      console.log(`[wiki-agent] 구버전 정리: ${path.basename(dest)}`);
+    } catch (err) {
+      console.error(`[wiki-agent] 구버전 정리 error: ${err.message}`);
+    }
+  }
+
+  try {
+    if (!fs.existsSync(SETTINGS_FILE)) return;
+    const settings = readSettings();
+    if (!settings.hooks) return;
+    let removed = 0;
+    for (const event of ['UserPromptSubmit', 'Stop']) {
+      const list = settings.hooks[event];
+      if (!Array.isArray(list)) continue;
+      const kept = list.filter((e) => {
+        const cmds = (e && e.hooks) || [];
+        const isLegacy = cmds.some((h) => h && LEGACY_HOOK_DESTS.includes(h.command));
+        if (isLegacy) removed++;
+        return !isLegacy;
+      });
+      if (kept.length !== list.length) settings.hooks[event] = kept;
+    }
+    if (removed > 0) {
+      writeSettings(settings);
+      console.log(`[wiki-agent] settings.json 구버전 hook 엔트리 ${removed}개 제거`);
+    }
+  } catch (err) {
+    console.error(`[wiki-agent] 구버전 hook 엔트리 정리 error: ${err.message}`);
   }
 }
 
@@ -259,7 +377,7 @@ function linkOne(src, dest, label) {
 function ensureHook() {
   try {
     if (!fs.existsSync(HOOK_SRC)) {
-      console.warn('[wiki4-agent] hook 스크립트 없음, 건너뜀');
+      console.warn('[wiki-agent] hook 스크립트 없음, 건너뜀');
       return;
     }
     ensureDir(HOOK_DEST_DIR);
@@ -268,12 +386,12 @@ function ensureHook() {
     const lstat = fs.lstatSync(HOOK_DEST, { throwIfNoEntry: false });
     if (!lstat) {
       fs.symlinkSync(HOOK_SRC, HOOK_DEST);
-      console.log(`[wiki4-agent] hook link: ${HOOK_DEST}`);
+      console.log(`[wiki-agent] hook link: ${HOOK_DEST}`);
     } else if (lstat.isSymbolicLink()) {
       if (fs.readlinkSync(HOOK_DEST) !== HOOK_SRC) {
         fs.unlinkSync(HOOK_DEST);
         fs.symlinkSync(HOOK_SRC, HOOK_DEST);
-        console.log(`[wiki4-agent] hook relink: ${HOOK_DEST}`);
+        console.log(`[wiki-agent] hook relink: ${HOOK_DEST}`);
       }
     }
 
@@ -292,12 +410,12 @@ function ensureHook() {
     if (!alreadyRegistered) {
       settings.hooks.UserPromptSubmit.push(hookEntry);
       writeSettings(settings);
-      console.log('[wiki4-agent] settings.json hooks.UserPromptSubmit 등록 완료');
+      console.log('[wiki-agent] settings.json hooks.UserPromptSubmit 등록 완료');
     } else {
-      console.log('[wiki4-agent] hooks.UserPromptSubmit 이미 등록됨');
+      console.log('[wiki-agent] hooks.UserPromptSubmit 이미 등록됨');
     }
   } catch (err) {
-    console.error(`[wiki4-agent] hook 설치 error: ${err.message}`);
+    console.error(`[wiki-agent] hook 설치 error: ${err.message}`);
   }
 }
 
@@ -306,7 +424,7 @@ function ensureHook() {
 function ensureCiteHook() {
   try {
     if (!fs.existsSync(CITE_HOOK_SRC)) {
-      console.warn('[wiki4-agent] cite-verify hook 스크립트 없음, 건너뜀');
+      console.warn('[wiki-agent] cite-verify hook 스크립트 없음, 건너뜀');
       return;
     }
     ensureDir(HOOK_DEST_DIR);
@@ -315,12 +433,12 @@ function ensureCiteHook() {
     const lstat = fs.lstatSync(CITE_HOOK_DEST, { throwIfNoEntry: false });
     if (!lstat) {
       fs.symlinkSync(CITE_HOOK_SRC, CITE_HOOK_DEST);
-      console.log(`[wiki4-agent] cite-verify hook link: ${CITE_HOOK_DEST}`);
+      console.log(`[wiki-agent] cite-verify hook link: ${CITE_HOOK_DEST}`);
     } else if (lstat.isSymbolicLink()) {
       if (fs.readlinkSync(CITE_HOOK_DEST) !== CITE_HOOK_SRC) {
         fs.unlinkSync(CITE_HOOK_DEST);
         fs.symlinkSync(CITE_HOOK_SRC, CITE_HOOK_DEST);
-        console.log(`[wiki4-agent] cite-verify hook relink: ${CITE_HOOK_DEST}`);
+        console.log(`[wiki-agent] cite-verify hook relink: ${CITE_HOOK_DEST}`);
       }
     }
 
@@ -338,12 +456,12 @@ function ensureCiteHook() {
     if (!alreadyRegistered) {
       settings.hooks.Stop.push(citeEntry);
       writeSettings(settings);
-      console.log('[wiki4-agent] settings.json hooks.Stop 등록 완료');
+      console.log('[wiki-agent] settings.json hooks.Stop 등록 완료');
     } else {
-      console.log('[wiki4-agent] hooks.Stop 이미 등록됨');
+      console.log('[wiki-agent] hooks.Stop 이미 등록됨');
     }
   } catch (err) {
-    console.error(`[wiki4-agent] cite-verify hook 설치 error: ${err.message}`);
+    console.error(`[wiki-agent] cite-verify hook 설치 error: ${err.message}`);
   }
 }
 
@@ -352,7 +470,7 @@ function ensureCiteHook() {
 function injectAutoConsult() {
   try {
     if (!fs.existsSync(AUTO_CONSULT_TEMPLATE)) {
-      console.warn('[wiki4-agent] auto-consult template not found, skipping');
+      console.warn('[wiki-agent] auto-consult template not found, skipping');
       return;
     }
     const block = fs.readFileSync(AUTO_CONSULT_TEMPLATE, 'utf8').trim();
@@ -381,9 +499,9 @@ function injectAutoConsult() {
 
     ensureDir(path.dirname(CLAUDE_MD));
     fs.writeFileSync(CLAUDE_MD, next, 'utf8');
-    console.log(`[wiki4-agent] auto-consult: ${mode} in ~/.claude/CLAUDE.md`);
+    console.log(`[wiki-agent] auto-consult: ${mode} in ~/.claude/CLAUDE.md`);
   } catch (err) {
-    console.error(`[wiki4-agent] auto-consult injection error: ${err.message}`);
+    console.error(`[wiki-agent] auto-consult injection error: ${err.message}`);
   }
 }
 
@@ -401,11 +519,14 @@ function updateSummary(s, status) {
 }
 
 async function main() {
-  console.log('[wiki4-agent] 설치 시작');
+  console.log('[wiki-agent] 설치 시작');
   console.log('');
 
+  // 0) 구버전(wiki4-*) 잔재 정리 — 중복 hook 실행 방지
+  cleanupLegacy();
+
   // 1) WIKI_PATH 보장
-  const wikiPath = ensureWikiPath();
+  const wikiPath = await ensureWikiPath();
 
   // 2) WIKI_ORGS 인터랙티브 선택
   const orgs = await ensureOrgs();
@@ -423,13 +544,13 @@ async function main() {
     }
   }
   console.log(
-    `[wiki4-agent] skills: linked=${summary.linked}, relinked=${summary.relinked}, ` +
+    `[wiki-agent] skills: linked=${summary.linked}, relinked=${summary.relinked}, ` +
     `already=${summary.alreadyLinked}, conflict=${summary.conflict}, ` +
     `error=${summary.error}, skip=${summary.skip}`
   );
   if (summary.conflict > 0) {
     console.warn(
-      `[wiki4-agent] ${summary.conflict}개 충돌 — 기존 사용자 파일 보호. ` +
+      `[wiki-agent] ${summary.conflict}개 충돌 — 기존 사용자 파일 보호. ` +
       `필요 시 수동 제거 후 "npm run install:manual" 재실행.`
     );
   }
@@ -449,7 +570,7 @@ async function main() {
   const mapping = (settings.env && settings.env.WIKI_PROJECT_ORGS) || '';
 
   console.log('');
-  console.log('[wiki4-agent] 설치 완료.');
+  console.log('[wiki-agent] 설치 완료.');
   console.log('');
   console.log(`  WIKI_PATH         = ${wikiPath}`);
   console.log(`  WIKI_ORGS         = ${orgList}`);
@@ -475,6 +596,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[wiki4-agent] 설치 중 오류:', err.message);
+  console.error('[wiki-agent] 설치 중 오류:', err.message);
   process.exit(1);
 });

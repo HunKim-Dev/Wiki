@@ -1,6 +1,6 @@
 ---
 name: wiki-config
-description: wiki4-agent 설정을 인터랙티브 메뉴로 관리. 사용자에게 단계별로 질문해서 ~/.claude/settings.json을 안전하게 수정. install.js처럼 묻고 고르게 하는 UX. 위키 폴더·그룹·프로젝트 연결·검색 범위·자동 참조 on/off 등.
+description: wiki-agent 설정을 인터랙티브 메뉴로 관리. 사용자에게 단계별로 질문해서 ~/.claude/settings.json을 안전하게 수정. install.js처럼 묻고 고르게 하는 UX. 위키 폴더·그룹·프로젝트 연결·검색 범위·자동 참조 on/off 등.
 ---
 
 # /wiki-config — 인터랙티브 설정 관리
@@ -30,7 +30,7 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 2. **사용자 승인 필수** — 각 변경 전 y/n
 3. **JSON 무결성 검증** — write 전후 둘 다 파싱 가능한지 확인
 4. **Atomic write** — 임시 파일 → rename
-5. **엔진 레포 가드** — cwd가 wiki3/wiki4면 settings 안 건드림
+5. **엔진 레포 가드** — cwd가 `$WIKI_ENGINE_ROOT` 하위면 settings 안 건드림
 6. **즉시 효과** — settings.json은 매 hook 호출마다 reload되므로 다음 프롬프트부터 적용. 세션 재시작 불필요
 
 ## 처리 흐름
@@ -38,23 +38,23 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 ### Stage 1 — 현재 상태 표시 (사용자 친화)
 
 ```
-📋 wiki4-agent 현재 설정
+📋 wiki-agent 현재 설정
 
 📂 위키 저장 폴더
-  /Users/grove/WorkSpace/wiki4docs ✅
+  ~/WorkSpace/wiki-docs ✅
   (모든 위키 파일이 여기 아래에 그룹·프로젝트 단위로 정리됨)
 
 🏢 등록된 그룹 (회사·팀·프로젝트군 단위로 위키를 분리)
-  - TT
-  - BeautyPoint
-  - Krafton ⭐ 기본
-  - Hongkong
-  - SI
+  - Initech
+  - Contoso
+  - Acme ⭐ 기본
+  - Globex
+  - Umbrella
 
 🗂️ 프로젝트 → 그룹 연결
-  pubgcom-app-front  → Krafton
-  windless-app-front → Krafton
-  (그 외 프로젝트는 기본 그룹 'Krafton'으로 자동 연결)
+  web-front  → Acme
+  admin-front → Acme
+  (그 외 프로젝트는 기본 그룹 'Acme'으로 자동 연결)
 
 🌐 Git 주소 자동 매칭 규칙
   (없음 — 추가하면 git remote URL로 그룹 자동 결정)
@@ -70,9 +70,9 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
   ✅ Claude가 사용자 입력 받을 때 위키 hook 실행됨
 
 📦 현재 위키 데이터 현황
-  Krafton/pubgcom-app-front (19 페이지)
-  Krafton/windless-app-front (24 페이지)
-  TT, BeautyPoint, Hongkong, SI — 아직 데이터 없음 (그룹만 등록)
+  Acme/web-front (19 페이지)
+  Acme/admin-front (24 페이지)
+  Initech, Contoso, Globex, Umbrella — 아직 데이터 없음 (그룹만 등록)
 
 💾 이전 설정 백업
   (없음 — 첫 변경 시 자동 생성됨)
@@ -121,7 +121,7 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 회사·팀·프로젝트군 단위로 위키를 분리할 수 있어요.
 예: 'Acme Corp' 회사 / 'design-team' 팀 / 'mobile-apps' 프로젝트군
 
-기존 그룹: TT, BeautyPoint, Krafton, Hongkong, SI
+기존 그룹: Initech, Contoso, Acme, Globex, Umbrella
 
 새 그룹 이름은? (영문·숫자·하이픈·언더스코어만)
 > _
@@ -137,12 +137,12 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 
 [변경 미리보기]
 변경 전:
-  등록된 그룹: TT, BeautyPoint, Krafton, Hongkong, SI
-  기본 그룹: Krafton
+  등록된 그룹: Initech, Contoso, Acme, Globex, Umbrella
+  기본 그룹: Acme
 
 변경 후:
-  등록된 그룹: TT, BeautyPoint, Krafton, Hongkong, SI, Acme  ← 추가
-  기본 그룹: Acme  ← 변경 (또는 Krafton 유지)
+  등록된 그룹: Initech, Contoso, Acme, Globex, Umbrella, Initrode  ← 추가
+  기본 그룹: Initrode  ← 변경 (또는 Acme 유지)
 
 적용할까요? (y/n)
 ```
@@ -153,29 +153,29 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 ❌ 그룹 제거
 
 현재 등록된 그룹:
-  1. TT (데이터 없음)
-  2. BeautyPoint (데이터 없음)
-  3. Krafton ⭐ 기본 — 50 페이지 (pubgcom-app-front, windless-app-front)
-  4. Hongkong (데이터 없음)
-  5. SI (데이터 없음)
+  1. Initech (데이터 없음)
+  2. Contoso (데이터 없음)
+  3. Acme ⭐ 기본 — 50 페이지 (web-front, admin-front)
+  4. Globex (데이터 없음)
+  5. Umbrella (데이터 없음)
 
 제거할 그룹 번호 또는 이름:
 > _
 
 [자동 검증·경고]
 ⚠️ 데이터 있는 경우 경고:
-  "Krafton 그룹에 50 페이지가 있어요. 제거하면 매핑된 프로젝트가 끊깁니다.
-   wiki 파일 자체는 안 지웁니다 ($WIKI_PATH/Krafton/ 그대로 남음).
+  "Acme 그룹에 50 페이지가 있어요. 제거하면 매핑된 프로젝트가 끊깁니다.
+   wiki 파일 자체는 안 지웁니다 ($WIKI_PATH/Acme/ 그대로 남음).
    진짜 제거하시겠어요?"
 
 ⚠️ 기본 그룹 제거 시:
-  "Krafton이 기본 그룹입니다. 새 기본 그룹을 정해주세요."
+  "Acme이 기본 그룹입니다. 새 기본 그룹을 정해주세요."
   → 다른 그룹 선택 받기
 
 ⚠️ 매핑된 프로젝트 처리:
   "이 그룹에 연결된 프로젝트 2개:
-    - pubgcom-app-front
-    - windless-app-front
+    - web-front
+    - admin-front
    연결을 함께 끊을까요? (y/n)"
 
 [변경 미리보기 + 적용 승인]
@@ -186,15 +186,15 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 ```
 ⭐ 기본 그룹 변경
 
-현재 기본 그룹: Krafton
+현재 기본 그룹: Acme
 (프로젝트가 매핑 안 되면 이 그룹으로 자동 연결됨)
 
 새 기본 그룹 선택:
-  1. TT
-  2. BeautyPoint
-  3. Krafton ← 현재
-  4. Hongkong
-  5. SI
+  1. Initech
+  2. Contoso
+  3. Acme ← 현재
+  4. Globex
+  5. Umbrella
 
 선택: _
 
@@ -212,23 +212,23 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 > _
 
 어느 그룹에 연결할까요?
-  1. TT
-  2. BeautyPoint
-  3. Krafton ⭐ 기본
-  4. Hongkong
-  5. SI
+  1. Initech
+  2. Contoso
+  3. Acme ⭐ 기본
+  4. Globex
+  5. Umbrella
 
 선택: _
 
 [변경 미리보기]
 변경 전:
-  pubgcom-app-front  → Krafton
-  windless-app-front → Krafton
-  (my-new-app은 매핑 없음 → 기본 'Krafton'으로 자동 폴백)
+  web-front  → Acme
+  admin-front → Acme
+  (my-new-app은 매핑 없음 → 기본 'Acme'으로 자동 폴백)
 
 변경 후:
-  pubgcom-app-front  → Krafton
-  windless-app-front → Krafton
+  web-front  → Acme
+  admin-front → Acme
   my-new-app         → Acme  ← 신규
 
 적용? (y/n)
@@ -240,13 +240,13 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 🔌 프로젝트 연결 해제
 
 현재 연결:
-  1. pubgcom-app-front  → Krafton
-  2. windless-app-front → Krafton
+  1. web-front  → Acme
+  2. admin-front → Acme
 
 해제할 연결 번호:
 > _
 
-⚠️ 해제 후엔 기본 그룹 'Krafton'으로 자동 폴백됨 (실제 wiki 파일은 그대로).
+⚠️ 해제 후엔 기본 그룹 'Acme'으로 자동 폴백됨 (실제 wiki 파일은 그대로).
 
 [적용 승인]
 ```
@@ -269,14 +269,14 @@ settings.json 직접 수정이 불편할 때 쓰는 안전한 설정 도구. 항
 
 [a 선택 시]
 URL 패턴 (substring 매칭):
-  예: 'github.com/krafton-inc' → Krafton
+  예: 'github.com/acme-inc' → Acme
   예: 'gitlab.com/acme-corp'   → Acme
 
 패턴 입력:
 > _
 
 매핑할 그룹 (위 목록에서):
-  1. TT  2. BeautyPoint  3. Krafton  4. Hongkong  5. SI
+  1. Initech  2. Contoso  3. Acme  4. Globex  5. Umbrella
 > _
 
 [적용 승인]
@@ -287,7 +287,7 @@ URL 패턴 (substring 매칭):
 ```
 📂 위키 저장 폴더 변경
 
-현재 위치: /Users/grove/WorkSpace/wiki4docs
+현재 위치: ~/WorkSpace/wiki-docs
 이 폴더에 50 페이지가 있습니다.
 
 새 위치 입력 (~ 사용 가능):
@@ -318,7 +318,7 @@ URL 패턴 (substring 매칭):
 현재: 같은 그룹 전체 (org-wide)
    → 같은 그룹의 모든 프로젝트 위키를 검색
    → 현재 프로젝트는 ×1.5 우선순위로 상단 노출
-   → 예: pubgcom 작업 중에 windless 위키도 자동 검색됨
+   → 예: web-front 작업 중에 admin-front 위키도 자동 검색됨
 
 대안: 현재 프로젝트만 (current)
    → 다른 프로젝트 위키는 절대 안 봄
@@ -339,7 +339,7 @@ URL 패턴 (substring 매칭):
 현재: ✅ 활성
 
 매 사용자 질문마다 hook이 자동으로 위키를 검색해 컨텍스트로 주입합니다.
-이게 wiki4-agent의 핵심 기능입니다.
+이게 wiki-agent의 핵심 기능입니다.
 
 변경 옵션:
   1. 비활성화 — 자동 검색 끔. wiki는 /wiki, /wiki-config 같은 명시 호출 시에만
@@ -388,7 +388,7 @@ URL 패턴 (substring 매칭):
 변경 내용:
   - 'Acme' 그룹 추가
   - 'my-new-app' 프로젝트를 'Acme' 그룹에 연결
-  - 기본 그룹: Krafton → Acme 변경
+  - 기본 그룹: Acme → Acme 변경
 
 백업 파일: ~/.claude/settings.json.bak-2026-04-27T15:23:45
    (문제 생기면 메뉴 10번으로 복원 가능)
@@ -403,7 +403,7 @@ URL 패턴 (substring 매칭):
 
 ## 안전 가드
 
-- `cwd`가 `/Users/grove/WorkSpace/wiki3` 또는 `/Users/grove/WorkSpace/wiki4`면 즉시 종료 + "엔진 레포에선 wiki-config 사용 금지" 안내
+- `cwd`가 `$WIKI_ENGINE_ROOT`(이 패키지의 소스 트리) 하위면 즉시 종료 + "엔진 레포에선 wiki-config 사용 금지" 안내
 - `~/.claude/settings.json` 파싱 실패 시 → "현재 settings 파일이 손상됐습니다" + 메뉴 10번 복원으로 직행
 - 위키 저장 폴더 변경 시 기존 데이터 절대 자동 삭제 안 함 (사용자 명시 명령 없으면)
 - 모든 메뉴 어디서든 q·취소·뒤로가기 가능

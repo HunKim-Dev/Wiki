@@ -35,7 +35,7 @@ description: 소스 문서(README, ADR, PR 설명, 회의록 등)를 읽고 LLM 
 ## 경로 해석 — Org / Project 2단계 모델
 
 `install.js`가 `~/.claude/settings.json`에 다음 env를 자동 주입:
-- `WIKI_PATH` — 저장 루트 (예: `~/WorkSpace/wiki4docs`)
+- `WIKI_PATH` — 저장 루트 (예: `~/WorkSpace/wiki-docs`)
 - `WIKI_ORGS` — 담당 조직 CSV 목록
 - `WIKI_DEFAULT_ORG` — 기본 조직
 - `WIKI_PROJECT_ORGS` — `project=org` CSV 매핑
@@ -53,12 +53,12 @@ description: 소스 문서(README, ADR, PR 설명, 회의록 등)를 읽고 LLM 
   2. **(c) Git remote 패턴** — `WIKI_ORG_REMOTE_PATTERNS`의 substring 매칭
   3. **(default)** — `WIKI_DEFAULT_ORG`
 - **출력 루트** — `$WIKI_PATH/<org>/<project>/`
-  - 예: project=`pubgcom-app-front`, org=`Krafton` → `$WIKI_PATH/Krafton/pubgcom-app-front/`
+  - 예: project=`web-front`, org=`Acme` → `$WIKI_PATH/Acme/web-front/`
 
 ### 실행 전 확인 (실패 시 중단)
 
 ```bash
-: "${WIKI_PATH:?WIKI_PATH 미설정 — 'cd wiki4 && npm install -g .' 실행 후 재시도}"
+: "${WIKI_PATH:?WIKI_PATH 미설정 — 'npm install -g wiki-agent' 실행 후 재시도}"
 [ -d "$WIKI_PATH" ] || { echo "WIKI_PATH 존재 안 함: $WIKI_PATH"; exit 1; }
 SRC=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PROJECT=$(basename "$SRC")
@@ -84,7 +84,7 @@ mkdir -p "$OUT"
 
 ### 엔진 레포 가드
 
-`$SRC`가 `/Users/grove/WorkSpace/wiki3`, `/Users/grove/WorkSpace/wiki4`이거나 `llm-wiki-graphify-skills-design-v2.md`를 포함하면 **중단** — 엔진 자체 수정 금지.
+`$SRC`가 `$WIKI_ENGINE_ROOT`(이 패키지의 소스 트리, install 시 settings.json env에 주입됨) 하위이거나 `llm-wiki-graphify-skills-design-v2.md`를 포함하면 **중단** — 엔진 자체 수정 금지.
 
 ### 원본 오염 구조적 방지
 
@@ -271,7 +271,7 @@ tags: []
 - **Inverted Index 증분 갱신** (필수) — 이번 ingest에서 생성/수정된 페이지들을 인덱스에 반영:
 
   ```bash
-  python3 /Users/grove/WorkSpace/wiki4/scripts/hooks/wiki-build-index.py --incremental \
+  python3 "$WIKI_ENGINE_ROOT/scripts/hooks/wiki-build-index.py" --incremental \
     "$WIKI_PATH/$ORG/$PROJECT/wiki" \
     <수정된 페이지 rel_path 1> <수정된 페이지 rel_path 2> ...
   ```
@@ -402,10 +402,12 @@ Stage C를 **skip**하고 Stage D(결과 보고)로 직행.
 [ "$1" = "--no-commit" ] && exit 0
 # 1.5) Stage E에서 🔴 발견 시 여기까지 오지 않음 (이미 Stage D로 건너뜀)
 
-# 2) 엔진 레포 가드
-case "$WIKI_PATH" in
-  /Users/grove/WorkSpace/wiki3*|/Users/grove/WorkSpace/wiki4*) exit 0 ;;
-esac
+# 2) 엔진 레포 가드 (WIKI_ENGINE_ROOT = 이 패키지 소스 트리)
+if [ -n "$WIKI_ENGINE_ROOT" ]; then
+  case "$WIKI_PATH" in
+    "$WIKI_ENGINE_ROOT"|"$WIKI_ENGINE_ROOT"/*) exit 0 ;;
+  esac
+fi
 
 # 3) git repo 존재
 [ -d "$WIKI_PATH/.git" ] || exit 0  # not a repo — skip silently
@@ -431,7 +433,7 @@ wiki: <프로젝트> — <source 요약 30자 이내>
 
 예:
 ```
-wiki: pubgcom-app-front — Xeno Point 스피너 로직 기록
+wiki: web-front — Xeno Point 스피너 로직 기록
 
 - [2026-04-23T16:50:00Z] 9개 페이지 (신규 2, 수정 5, back-link 2)
 - 출처: hooks/events/temporary/useXenopointchallenge.ts
@@ -503,7 +505,7 @@ Commit:
 - `wiki/actions/`, `wiki/clarifications/`는 본 스킬이 **쓰지 않음**.
 - lint는 **자동 수정 금지**. 리포트만.
 - frontmatter 필드명은 템플릿 그대로. `kind` (not `type`), `source` (not `sources`).
-- 엔진 레포(wiki3/wiki4) 수정 금지.
+- 엔진 레포(`$WIKI_ENGINE_ROOT`) 수정 금지.
 - **자동 commit 안전 가드**: git repo 없거나 변경 없으면 **silent skip** (실패 아님). `--no-verify`/`--amend`/force push 절대 금지. push는 /wiki가 하지 않음 — /wiki-commit --push 별도 호출.
 
 ## 반환

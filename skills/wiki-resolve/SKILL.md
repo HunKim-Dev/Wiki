@@ -28,7 +28,7 @@ description: 판례(과거 결정/액션) 또는 🔴 플래그를 근거로 **�
 2. **경로 해석**:
    - 소스 (`$WIKI_TARGET_REPO`): 환경변수 → `--target` → cwd (소스 파일 수정 대상)
    - 출력 (`$WIKI_OUTPUT_DIR`): 환경변수 → `--output` → `$WIKI_TARGET_REPO` 폴백 (wiki/ 파일 저장 대상)
-3. **엔진 레포 안전 가드**: `$WIKI_TARGET_REPO` 또는 `$WIKI_OUTPUT_DIR` 어느 쪽이든 `/Users/grove/WorkSpace/wiki3`면 중단 (두 경로 모두 검사)
+3. **엔진 레포 안전 가드**: `$WIKI_TARGET_REPO` 또는 `$WIKI_OUTPUT_DIR` 어느 쪽이든 `$WIKI_ENGINE_ROOT`(이 패키지의 소스 트리) 하위면 중단 (두 경로 모두 검사)
 4. `Task` 도구로 `wiki-resolve` 서브에이전트 호출. 위 입력 전달.
 5. 서브에이전트가 5단계 수행:
    - Stage 1: Context 파악 + pre_change_commit 기록
