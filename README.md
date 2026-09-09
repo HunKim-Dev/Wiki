@@ -152,7 +152,7 @@ Karpathy 원안 + 다음을 추가:
 
 ```bash
 git clone https://github.com/HunKim-Dev/Wiki.git
-cd wiki
+cd Wiki
 npm install -g .
 ```
 
