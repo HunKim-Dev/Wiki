@@ -140,7 +140,7 @@ Karpathy 원안 + 다음을 추가:
 npm install -g wiki-agent
 
 # 또는 소스에서
-git clone https://github.com/Grove-hun/wiki.git
+git clone https://github.com/hunkim-tae/wiki.git
 cd wiki && npm install -g .
 ```
 
