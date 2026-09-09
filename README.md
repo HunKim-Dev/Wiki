@@ -823,6 +823,40 @@ tags: [...]
 
 ## 트러블슈팅
 
+### 레포를 옮긴 뒤 wiki가 조용히 죽음 ★ 가장 먼저 의심할 것
+
+설치는 이 레포를 **심링크로** `~/.claude/`에 연결합니다. 그래서 레포 폴더를
+옮기거나 이름을 바꾸면 hook 2개와 스킬 7개의 심링크가 전부 끊어집니다.
+
+문제는 **아무 에러도 안 뜬다**는 겁니다. Claude Code는 hook 명령 실패를 조용히 넘기므로,
+어느 날부터 답변에 wiki 인용이 사라진 것 말고는 증상이 없습니다.
+`/wiki` 같은 슬래시 스킬이 목록에서 사라진 것도 같은 원인입니다.
+
+진단:
+
+```bash
+# 1) 끊긴 심링크 찾기 — 한 줄이라도 출력되면 재설치 필요
+for f in ~/.claude/hooks/wiki-*.py ~/.claude/skills/wiki*; do
+  [ -e "$f" ] || echo "끊김: $f → $(readlink "$f")"
+done
+
+# 2) WIKI_PATH가 실제로 존재하는지 (위키 데이터 폴더도 같이 옮겼다면 여기도 깨진다)
+python3 -c "import json,os; p=json.load(open(os.path.expanduser('~/.claude/settings.json')))['env']['WIKI_PATH']; print(p, '→', '존재' if os.path.isdir(p) else '❌ 없음')"
+```
+
+복구:
+
+```bash
+cd <레포를 옮긴 새 경로>
+npm install -g .    # 심링크 재생성 + 구버전 잔재 정리
+```
+
+위키 **데이터** 폴더(`$WIKI_PATH`)까지 옮겼다면 경로를 따로 고쳐야 합니다 —
+`/wiki-config` → `7. 위키 저장 폴더 변경`. 설치는 기존 `WIKI_PATH`가 실존할 때만
+그대로 유지하고, 없으면 기본값으로 새로 잡기 때문에 데이터를 못 찾은 채 조용히 넘어갑니다.
+
+> 레포를 옮길 일이 있으면 **옮긴 직후 `npm install -g .`를 다시 돌리는 걸 습관**으로.
+
 ### Hook이 실행되는데 wiki 참조 안 됨
 
 ```bash
