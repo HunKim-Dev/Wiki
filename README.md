@@ -151,7 +151,7 @@ Karpathy 원안 + 다음을 추가:
 ### 설치 명령
 
 ```bash
-git clone https://github.com/HunKim-Dev/wiki.git
+git clone https://github.com/HunKim-Dev/Wiki.git
 cd wiki
 npm install -g .
 ```
