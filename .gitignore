@@ -1,0 +1,33 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ---- Node ----
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+*.tgz
+
+# ---- Editors ----
+.idea/
+.vscode/
+*.swp
+*~
+
+# ---- Claude Code 로컬 설정 (머신마다 다름) ----
+.claude/settings.local.json
+
+# ---- wiki 런타임 산출물 (엔진 레포에는 커밋 안 함) ----
+.wiki4-index.json
+lint-reports/
+clarifications/
+settings.json.bak-*
+
+# ---- 빌드/임시 ----
+dist/
+tmp/
+*.log
